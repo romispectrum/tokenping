@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "aave-obrestne-mere",
+  title: "Kako delujejo obrestne mere na Aave in zakaj poskočijo",
+  description:
+    "Obrestne mere za izposojo na Aave sledijo krivulji izkoriščenosti: blago do optimalne ravni, strmo nad njo. Formula, parametri, skoki in kaj narediti.",
+  h1: "Kako delujejo obrestne mere na Aave in zakaj obrestne mere za izposojo poskočijo?",
+  publishedAt: "2026-10-25",
+  primaryQuestion: "Kako Aave določa obrestne mere za izposojo in polog ter zakaj te poskočijo?",
+  readingMinutes: 9,
+};
+
+<ShortAnswer>
+  Na Aave V3 spremenljiva obrestna mera za izposojo posameznega sredstva sledi krivulji, ki jo določi governance: z
+  izkoriščenostjo (utilization), deležem položenih žetonov, ki so izposojeni, rahlo narašča do optimalne ravni, nad njo
+  pa strmo. Posojilodajalci zaslužijo obrestno mero za izposojo, pomnoženo z izkoriščenostjo, zmanjšano za rezervni
+  faktor. Obrestne mere se ponovno izračunajo ob vsakem pologu, izposoji, odplačilu in dvigu, zato lahko en velik dvig
+  potisne izkoriščenost čez optimalno raven in obrestno mero v enem bloku pomnoži: USDC na Ethereum Core je 14. oktobra
+  2026 poskočil s 4,50 % na 13,67 % APR in bil približno 36 minut pozneje spet pri 4,76 %. Ves dolg na Aave V3 ima
+  spremenljivo obrestno mero.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Številke in številke blokov, v katerih so bile prebrane: content/blog/snapshots/aave-interest-rates.md */}
+
+## Kaj določa obrestno mero za izposojo na Aave?
+
+Na Aave V3 obrestno mero za izposojo sredstva določata dve stvari: njegova izkoriščenost in njegovi parametri obrestne mere. Izkoriščenost je delež sklada sredstva, ki je posojen: dolg, deljen z dolgom plus žetoni, ki so še na voljo. Parametri so štiri številke za vsako sredstvo, ki jih določi governance Aave, Risk Stewards pri Aave pa jih lahko prilagodijo v omejenih korakih in z minimalnimi zamiki:
+
+- **Optimalno razmerje izkoriščenosti (optimal usage ratio):** izkoriščenost, pri kateri se krivulja prelomi.
+- **Osnovna obrestna mera (base rate):** obrestna mera za izposojo pri 0 % izkoriščenosti.
+- **Naklon 1 (slope 1):** za koliko obrestna mera zraste od 0 % do optimalnega razmerja izkoriščenosti.
+- **Naklon 2 (slope 2):** za koliko še zraste od optimalnega razmerja izkoriščenosti do 100 %.
+
+Prebrani 25. oktobra 2026 v bloku Ethereum 26269328 in bloku Arbitrum 518125419 so bili parametri in obrestne mere nekaj pogostih sredstev takšni:
+
+| Trg in sredstvo    | Optimalna izkoriščenost | Osnova | Naklon 1 | Naklon 2 | Izkoriščenost   | APR za izposojo | APR za polog |
+| ------------------ | ----------------------- | ------ | -------- | -------- | --------------- | --------------- | ------------ |
+| Ethereum Core USDC | 94 %                    | 0 %    | 4,5 %    | 10 %     | 93,72 %         | 4,49 %          | 3,78 %       |
+| Ethereum Core USDT | 92 %                    | 0 %    | 4,5 %    | 10 %     | 87,81 %         | 4,30 %          | 3,39 %       |
+| Ethereum Core WETH | 92 %                    | 0 %    | 2,2 %    | 6 %      | 81,31 %         | 1,94 %          | 1,31 %       |
+| Ethereum Core GHO  | 99 %                    | 4,5 %  | 0 %      | 0 %      | se ne uporablja | 4,50 %          | 0 %          |
+| Arbitrum USDC      | 90 %                    | 0 %    | 4 %      | 10 %     | 77,32 %         | 3,44 %          | 2,39 %       |
+
+GHO je izjema: oba njegova naklona sta nič, zato njegova obrestna mera ostaja enaka ne glede na izkoriščenost in se spreminja ročno (glej [GHO in Aave V4](#kako-so-dolocene-obrestne-mere-za-gho-in-na-aave-v4)).
+
+## Kako se izračuna obrestna mera za izposojo na Aave?
+
+Obrestna mera za izposojo na Aave V3 je do optimalnega razmerja izkoriščenosti premica, nad njim pa precej strmejša premica. Z U za izkoriščenost:
+
+**Do optimalnega razmerja izkoriščenosti: obrestna mera za izposojo = osnova + naklon 1 × U ÷ optimalno razmerje izkoriščenosti**
+
+**Nad njim: obrestna mera za izposojo = osnova + naklon 1 + naklon 2 × (U − optimalno razmerje izkoriščenosti) ÷ (1 − optimalno razmerje izkoriščenosti)**
+
+V pogodbi je U skupni dolg, deljen s skupnim dolgom plus žetoni, ki jih sklad še ima. S parametri USDC na Ethereum Core je obrestna mera pri posamezni izkoriščenosti:
+
+| Izkoriščenost    | APR za izposojo |
+| ---------------- | --------------- |
+| 50 %             | 2,39 %          |
+| 80 %             | 3,83 %          |
+| 90 %             | 4,31 %          |
+| 94 % (optimalna) | 4,50 %          |
+| 95 %             | 6,17 %          |
+| 96 %             | 7,83 %          |
+| 98 %             | 11,17 %         |
+| 100 %            | 14,50 %         |
+
+Pod 94 % deset točk izkoriščenosti premakne obrestno mero za manj kot pol točke. Nad tem vsaka točka doda približno 1,67 točke in zadnjih šest točk izkoriščenosti obrestno mero več kot potroji. Prebrano 25. oktobra 2026 je bil USDC pri 93,72 %, tik pod prelomom: 4,5 % × 0,9372 ÷ 0,94 da 4,49 %, kolikor je zaračunaval.
+
+Krivulja je namenoma takšna. Pod optimalno ravnjo poceni izposoja ohranja sklad v uporabi; nad njo strma obrestna mera izposojo tako podraži, da nekateri posojilojemalci odplačajo, nekateri imetniki pa položijo sredstva, kar izkoriščenost spet zniža in pusti žetone na voljo posojilodajalcem, ki želijo dvigniti.
+
+## Zakaj obrestne mere za izposojo na Aave poskočijo?
+
+Obrestne mere za izposojo na Aave poskočijo, ko izkoriščenost preseže optimalno razmerje izkoriščenosti, običajno zato, ker velik posojilodajalec dvigne sredstva ali si velik posojilojemalec izposodi. Obrestna mera se ponovno izračuna v isti transakciji in vsak posojilojemalec tega sredstva plačuje novo obrestno mero od tega trenutka do naslednje spremembe.
+
+14. oktobra 2026 je en dvig natanko 133.898.000 USDC z Ethereum Core v enem samem bloku potisnil izkoriščenost s 93,92 % na 99,50 %:
+
+| Blok Ethereum (UTC)           | Kaj se je zgodilo                             | Izkoriščenost    | APR za izposojo USDC |
+| ----------------------------- | --------------------------------------------- | ---------------- | -------------------- |
+| 26194052 (14. okt., 23:32:47) | Pred tem                                      | 93,92 %          | 4,50 %               |
+| 26194053 (14. okt., 23:32:59) | Dvignjenih 133.898.000 USDC                   | 99,50 %          | 13,67 %              |
+| 26194088 (14. okt., 23:39:59) | Najvišja točka v tem obdobju                  | približno 99,8 % | 14,18 %              |
+| 26194231 (15. okt., 00:08:35) | Isti naslov je položil nazaj 133.898.000 USDC | 94,16 %          | 4,76 %               |
+
+Posojilojemalci so 36 minut plačevali približno trikratno običajno obrestno mero, zgornja formula pa vsako od teh obrestnih mer reproducira iz izkoriščenosti. Skok traja, dokler izkoriščenost ostaja visoka: tukaj so se isti žetoni vrnili, v drugih primerih pa jo znižajo šele novi posojilodajalci ali odplačila, ki jih privabi visoka obrestna mera.
+
+Obrestno mero za izposojo spreminjata še dve stvari. Governance ali Risk Stewards lahko spremenijo štiri parametre, kar naenkrat premakne celotno krivuljo. Med transakcijami pa se obrestna mera ne spreminja: Aave jo ponovno izračuna ob vsakem pologu, izposoji, odplačilu, dvigu in likvidaciji tega sredstva, obresti pa se po tej meri nabirajo, sekundo za sekundo, do naslednje.
+
+## Zakaj posojilodajalci zaslužijo manj, kot plačajo posojilojemalci?
+
+Posojilodajalci zaslužijo manj, kot plačajo posojilojemalci, ker obresti plačuje le izposojeni del sklada, protokol pa obdrži del teh obresti. Obrestna mera za polog je:
+
+**Obrestna mera za polog = obrestna mera za izposojo × izkoriščenost × (1 − rezervni faktor)**
+
+Za USDC na Ethereum Core 25. oktobra 2026: 4,4866 % × 0,9372 × (1 − 0,10) = 3,78 %. Rezervni faktor (reserve factor), 10 % za USDC in 15 % za WETH, gre v zakladnico Aave. Kjer ima rezerva primanjkljaj zaradi neizterljivega dolga (bad debt), ga pogodba upošteva tudi na strani pologov, kar obrestno mero za polog rahlo zniža.
+
+## Kakšna je razlika med APR in APY na Aave?
+
+Pogodbe hranijo obrestne mere kot APR, aplikacija Aave pa prikazuje APY, ki doda obrestovanje obresti. Matematična knjižnica aplikacije obrestuje APR vsako sekundo skozi leto s 31.536.000 sekundami:
+
+**APY = (1 + APR ÷ 31.536.000)^31.536.000 − 1**
+
+4,4866 % APR za USDC na Ethereum Core se v aplikaciji prikaže kot 4,59 % APY. Pri teh ravneh je razlika približno desetinka točke; pri 14 % APR je približno ena točka (15,0 % APY).
+
+## Kako skoki obrestnih mer vplivajo na tvoj health factor?
+
+Kratek skok tvoj health factor (faktor zdravja) komaj premakne; visoka obrestna mera, ki traja mesece, ga premakne. Obresti se prištevajo tvojemu dolgu, večji dolg pa zniža health factor, kot pojasni [vzrok z obrestmi v vodniku o tem, zakaj tvoj health factor pada](/sl/blog/zakaj-je-padel-aave-health-factor#vzrok-3-so-se-obresti-na-tvoj-dolg-nabirale-hitreje-kot-na-zavarovanje).
+
+Vzemimo 10 WETH, položenih proti 12.000 izposojenim USDC na Ethereum Core, s pragom likvidacije (liquidation threshold) za WETH 83 % (prebrano 14. oktobra 2026) in ponazoritveno ceno ETH 2.400 $: health factor je 1,66. Če upoštevamo, kar WETH zasluži pri obrestni meri za polog 1,31 %:
+
+| Kako dolgo obrestna mera traja | Pri 4,49 % (25. oktober 2026)     | Pri 14,50 % (vrh krivulje) |
+| ------------------------------ | --------------------------------- | -------------------------- |
+| 36 minut                       | približno 0,04 USDC obresti, 1,66 | približno 0,12 USDC, 1,66  |
+| 30 dni                         | približno 1,66                    | približno 1,64             |
+| Eno leto                       | približno 1,61                    | približno 1,45             |
+
+Skok 14. oktobra je to pozicijo stal približno 12 centov. Trg, ki bi leto dni ostal na vrhu svoje krivulje, bi jo brez kakršnega koli premika cene znižal z 1,66 na približno 1,45, zato se pri počasnem drsenju splača prag opozorila z obilo rezerve ([koliko rezerve ti da health factor](/sl/blog/varen-aave-health-factor#kako-hitro-obresti-in-spremembe-parametrov-nacenjajo-tvojo-rezervo)).
+
+## Kaj lahko narediš, ko tvoja obrestna mera za izposojo poskoči?
+
+Ko tvoja obrestna mera za izposojo poskoči, najprej preveri izkoriščenost sredstva na njegovi strani v aplikaciji Aave: tik nad optimalnim razmerjem izkoriščenosti obrestna mera pade nazaj takoj, ko pade izkoriščenost. Nato imaš štiri možnosti, vsaka s svojo ceno:
+
+- **Počakaj.** Skok, ki ga povzroči en velik dvig, se lahko konča, ko se ti žetoni vrnejo, kot 14. oktobra 2026. Nič ne zagotavlja, da se bodo, medtem pa plačuješ visoko obrestno mero.
+- **Odplačaj del dolga.** To zniža tako tvoje obresti kot tvoje tveganje; [kako dvigniti svoj health factor na Aave](/sl/blog/kako-se-izogniti-likvidaciji-na-aave) obravnava odplačilo z lastnimi žetoni ali z zavarovanjem.
+- **Zamenjaj dolg v drugo sredstvo.** Vmesnik Aave Labs ima zamenjavo dolga (debt swap), ki v eni transakciji eno izposojeno sredstvo zamenja z drugim, po dokumentaciji Aave na trgih Ethereum Core, Prime in EtherFi ter na Arbitrumu, Avalanche, Base, BNB Chain, Optimismu, Polygonu, Gnosisu in Sonicu. Za Metis, Scroll, ZKsync, Celo, Soneium, Lineo, Plasmo in Ink ni navedena. Novo sredstvo ima svojo krivuljo in svoje tveganje, če se njegova cena giblje drugače kot tvoj stari dolg.
+- **Izposodi si na drugem trgu.** Vsak trg ima svoj sklad in svojo izkoriščenost: 25. oktobra 2026 je USDC stal 4,49 % na Ethereum Core in 3,44 % na Arbitrumu. Selitev pomeni odplačilo na enem trgu in izposojo na drugem, z zavarovanjem na tistem omrežju.
+
+## Kako so določene obrestne mere za GHO in na Aave V4?
+
+GHO, lastni stablecoin Aave, ima enotno obrestno mero za izposojo, ki je ne določa krivulja, ampak jo izberejo ljudje. Na Ethereum Core sta oba naklona v njegovih parametrih nič, zato je obrestna mera enaka osnovni obrestni meri, 4,50 % 25. oktobra 2026. Spreminja jo Risk Council z 2 od 3 podpisi prek pogodbe GHO steward: največ za 5 odstotnih točk na posodobitev in največ enkrat na dan. Zadnja sprememba, 3. oktobra 2026, jo je dvignila s 4,25 % na 4,50 %; od novembra 2024 je bila spremenjena 44-krat, med 3,00 % in 14,50 %. Nekdanji popust za imetnike stkAAVE je bil odstranjen z Aave v3.4.
+
+Aave V4 obdrži krivuljo izkoriščenosti, vendar jo dokumentacija opisuje kot nastavljeno za vsako sredstvo v Hubu, skladu, ki posoja vsem Spokom. Poleg te skupne obrestne mere vsak posojilojemalec plača User Risk Premium (premijo za tveganje uporabnika), ki je odvisna od kakovosti njegovega zavarovanja: primer Aave je 50-odstotna premija na 5-odstotno osnovno obrestno mero, kar da 7,5 %. Dva posojilojemalca istega sredstva na V4 lahko torej plačujeta različni obrestni meri, [razdelek o V4 v vodniku o health factorju](/sl/blog/aave-health-factor-razlozen#ali-je-health-factor-na-aave-v4-drugacen) pa obravnava, kaj še V4 spremeni.
+
+## Ali lahko na Aave dobiš fiksno obrestno mero?
+
+Ne. Aave V3 je nekoč imel možnost stabilne obrestne mere (stable rate), vendar je bila po prijavi napake leta 2024 v celoti opuščena, Aave v3.2 pa je kodo odstranil. Vsako posojilo na Aave V3 plačuje spremenljivo obrestno mero, enotno obrestno mero GHO pa je mogoče kadar koli spremeniti v mejah, ki jih ima njegov steward.
+
+## Ali te lahko opozorilo opozori na naraščajoče obrestne mere?
+
+Opozorilo za health factor ne spremlja obrestnih mer; spremlja, kaj obrestne mere naredijo s tvojo pozicijo. Tokenping preverja tvoj health factor na Aave V3 in V4 vsakih 5 minut na 22 omrežjih in ti pošilja sporočila prek Signala, Telegrama ali e-pošte, dokler je pod tvojim pragom (od 1,1 do 10). Skok, kot je bil 14. oktobra 2026, ga ne sproži, ker health factor komaj premakne; meseci visokih obresti ga bodo, ko dolg zraste dovolj, da preseže tvoj prag.
+
+Če želiš sporočilo o sami obrestni meri, nekatera druga orodja pošiljajo opozorila o obrestnih merah, [naša primerjava orodij za opozorila na Aave](/sl/blog/orodja-za-aave-opozorila-o-likvidaciji) pa navaja, kaj spremlja vsako od njih. Nastavitev opozorila za health factor opisuje vodnik [kako nastaviti opozorilo za health factor](/sl/blog/nastavitev-aave-health-factor-opozorila), najprej pa lahko [preveriš svoj health factor na Aave V3](/sl/aave); ogled pozicij ne stane ničesar.
+
+## Viri
+
+- [DefaultReserveInterestRateStrategyV2.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/misc/DefaultReserveInterestRateStrategyV2.sol) in [ReserveLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ReserveLogic.sol): krivulja obrestne mere, razmerje izkoriščenosti, obrestna mera za polog in kdaj se obrestne mere ponovno izračunajo (aave-v3-origin, dostopano 25. oktobra 2026)
+- [Strategija obrestne mere Aave V3 Ethereum Core](https://etherscan.io/address/0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB#readContract) in [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): parametri in obrestne mere v bloku 26269328; USDC v blokih 26194052, 26194053, 26194088, 26194230 in 26194231 (dostopano 25. oktobra 2026)
+- [Strategija obrestne mere Aave V3 Arbitrum](https://arbiscan.io/address/0x429F16dBA3B9e1900087Cbaa7b50D38Bc60fB73F#readContract): parametri in obrestne mere USDC v bloku 518125419 (dostopano 25. oktobra 2026)
+- [Aave Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): parametri obrestne mere med vrednostmi, ki jih stewardi lahko spremenijo, z največjo spremembo in minimalnim zamikom na posodobitev (dostopano 25. oktobra 2026)
+- [calculateCompoundedRate v aave-utilities](https://github.com/aave/aave-utilities/blob/master/packages/math-utils/src/formatters/compounded-interest/calculate-compounded-interest.ts): pretvorba APR v APY skozi 31.536.000 sekund (dostopano 25. oktobra 2026)
+- [Aave swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features.md): zamenjava dolga in odplačilo z zavarovanjem ter trgi, ki ju podpirajo (dostopano 25. oktobra 2026)
+- [GHO Stewards: October 2026 GHO borrow rate update](https://governance.aave.com/t/gho-stewards-october-2026-gho-borrow-rate-update/25754) (TokenLogic, 2. oktober 2026, dostopano 25. oktobra 2026) in [pogodba GHO steward](https://etherscan.io/address/0x98217A06721Ebf727f2C8d9aD7718ec28b7aAe34#readContract): omejitve na posodobitev in zgodovina obrestne mere od novembra 2024 (dostopano 25. oktobra 2026)
+- [Aave v3.4 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.4/Aave-v3.4-features.md): odstranitev popusta stkAAVE na GHO (dostopano 25. oktobra 2026)
+- [BGD: Full deprecation of stable rate](https://governance.aave.com/t/bgd-full-deprecation-of-stable-rate/16473) (31. januar 2024) in [Aave v3.2 features](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): odstranitev stabilne obrestne mere (dostopano 25. oktobra 2026)
+- [Dokumentacija Aave V4](https://aave.com/docs/aave-v4.md) in [V4 positions](https://aave.com/docs/aave-v4/positions.md): krivulja obrestne mere za vsako sredstvo v Hubu in User Risk Premium (dostopano 25. oktobra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._

@@ -51,8 +51,8 @@ export default defineConfig({
     setupFiles: [path.join(PACKAGE_ROOT, "utils/testing/setupTests.ts")],
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["**/node_modules/**", "**/.next/**"],
-    // The first import of content/blog compiles every guide in every language (88 MDX files), which takes longer than
-    // the 5-second default when the whole suite runs in parallel.
-    testTimeout: 20_000,
+    // The first import of content/blog compiles every guide in every language (25 per language, about 450 files with
+    // 17 languages and growing with each one), which takes far longer than the 5-second default.
+    testTimeout: 90_000,
   },
 });

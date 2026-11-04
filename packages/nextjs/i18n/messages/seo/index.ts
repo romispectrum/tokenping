@@ -13,6 +13,7 @@ import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
 import { MESSAGES as ro } from "./ro";
 import type { SeoMessages } from "./shared";
+import { MESSAGES as sl } from "./sl";
 import { MESSAGES as tr } from "./tr";
 import { MESSAGES as vi } from "./vi";
 import type { Localized } from "~~/i18n/locales";
@@ -21,4 +22,22 @@ import type { Localized } from "~~/i18n/locales";
 
 export type { SeoMessages } from "./shared";
 
-export const SEO_MESSAGES: Localized<SeoMessages> = { en, cs, es, hi, de, vi, fr, pt, it, pl, tr, id, nl, ro, hu, hr };
+export const SEO_MESSAGES: Localized<SeoMessages> = {
+  en,
+  cs,
+  es,
+  hi,
+  de,
+  vi,
+  fr,
+  pt,
+  it,
+  pl,
+  tr,
+  id,
+  nl,
+  ro,
+  hu,
+  hr,
+  sl,
+};

@@ -13,6 +13,7 @@ import { MESSAGES as pl } from "./pl";
 import { MESSAGES as pt } from "./pt";
 import { MESSAGES as ro } from "./ro";
 import type { CalculatorMessages } from "./shared";
+import { MESSAGES as sl } from "./sl";
 import { MESSAGES as tr } from "./tr";
 import { MESSAGES as vi } from "./vi";
 import type { Localized } from "~~/i18n/locales";
@@ -39,4 +40,5 @@ export const CALCULATOR_MESSAGES: Localized<CalculatorMessages> = {
   ro,
   hu,
   hr,
+  sl,
 };

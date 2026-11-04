@@ -1,0 +1,201 @@
+export const meta = {
+  slug: "aave-health-factor-razlozen",
+  title: "Aave health factor razložen: formula in primeri",
+  description:
+    "Kaj je health factor na Aave V3, kako ga izračunaš na primeru, zakaj se spreminja sam od sebe in kaj se zgodi, ko pade pod 1.",
+  h1: "Kaj je health factor na Aave in kako se izračuna?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-26",
+  primaryQuestion: "Kaj je health factor na Aave in kako se izračuna?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Health factor (faktor zdravja) na Aave je število, ki pokaže, kako blizu likvidacije je pozicija s posojilom: vrednost
+  tvojega zavarovanja, pri kateri je vsako sredstvo uteženo s svojim pragom likvidacije (liquidation threshold), deljena
+  z vrednostjo tvojega dolga. Ko na Aave V3 pade pod 1,00, lahko likvidatorji odplačajo del ali ves tvoj dolg in
+  zasežejo zavarovanje v vrednosti tega zneska in še bonus. Primer: 10 WETH po 2.400 $ s pragom likvidacije 83 % proti
+  12.000 USDC dolga da 24.000 × 0,83 ÷ 12.000 = 1,66.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Kaj je health factor na Aave?
+
+Health factor je število, ki primerja, koliko je vredno tvoje zavarovanje na Aave po varnostnem popustu, s tem, koliko dolguješ. Vsako sredstvo v zavarovanju šteje le do svojega praga likvidacije, zato 24.000 $ v WETH na Aave V3 Ethereum Core, kjer je bil prag za WETH v bloku 26193284 (14. oktober 2026) 83 %, šteje kot 19.920 $. To deliš s svojim dolgom in dobiš health factor.
+
+- **1,00 ali več:** pozicije ni mogoče likvidirati. Višje kot je število, bolj se lahko cene premaknejo proti tebi, preden pride do tega.
+- **Pod 1,00:** pozicijo je mogoče likvidirati.
+- **Brez dolga:** ni česa likvidirati. Pogodba vrne največje število, ki ga lahko shrani, aplikacije pa pokažejo ∞ ali prazno polje.
+
+Health factor 1,66 pomeni, da je tvoje uteženo zavarovanje 1,66-krat večje od dolga, ne pa, da te od likvidacije loči 66 %. Z enim volatilnim sredstvom v zavarovanju in dolgom v stablecoinu mora cena zavarovanja pasti za 1 − 1 ÷ HF, da health factor doseže 1,00: pri 1,66 za približno 39,8 %.
+
+Na Aave V3 ima vsak trg na vsakem omrežju svoj health factor. Če si izposojaš na Arbitrumu in na Base, imaš dva, in težava na enem ne vpliva na drugega. Na Ethereumu so ločeni tudi trgi Core, Prime, EtherFi in Horizon.
+
+## Kako se izračuna health factor na Aave?
+
+Aave V3 pomnoži vrednost vsakega sredstva v zavarovanju v USD s pragom likvidacije tega sredstva, rezultate sešteje in vsoto deli s tvojim celotnim dolgom v USD:
+
+**HF = Σ (vrednost zavarovanja v USD × prag likvidacije) ÷ skupna vrednost dolga v USD**
+
+To je izračun v `GenericLogic.calculateUserAccountData`, ki ga Aave V3 Pool izvede pri izposojah, dvigih in likvidacijah (aave-v3-origin, veja main, prebrano 14. oktobra 2026). Podrobnosti iz kode, ki so pomembne, če ga računaš sam:
+
+- **Cene prihajajo iz oraklja (vira cene) Aave**, ne z borze, v USD z 8 decimalkami.
+- **Štejejo le sredstva, vklopljena kot zavarovanje.** Sredstvo z razmerjem med posojilom in vrednostjo (LTV) 0 še vedno šteje po svojem pragu likvidacije, čeprav ne daje nobene zmožnosti izposoje.
+- **Šteje ves dolg**, po ceni oraklja, vključno z doslej nabranimi obrestmi.
+- **E-Mode zamenja prag** za sredstva v naboru zavarovanj tvoje kategorije E-Mode.
+- **Rezultat ima 18 decimalk.** 1,66 se vrne kot 1660000000000000000, likvidacija pa je mogoča pod 1e18.
+- **Brez dolga se vrne največji uint256**, približno 1,16 × 10^77. API Aave namesto tega vrne null.
+
+Ista formula lahko uporabi povprečni prag likvidacije, ki ga sporoči `getUserAccountData`: HF = skupno zavarovanje × povprečni prag likvidacije ÷ skupni dolg, kjer je povprečje Σ(zavarovanje × LT) ÷ Σ zavarovanje.
+
+## Primer z izračunom: kolikšen je health factor za 10 WETH proti 12.000 USDC?
+
+Health factor za 10 WETH zavarovanja proti 12.000 USDC dolga na Aave V3 Ethereum Core je 1,66, pri ceni ETH 2.400 $ in USDC 1,00 $. Cena ETH je zaokrožena zaradi preglednih številk; orakelj Aave je v Ethereumovem bloku 26193376 14. oktobra 2026 kazal 2.414,78 $. Parametri WETH so bili prebrani istega dne v bloku 26193284: LTV 80,5 %, prag likvidacije 83 %.
+
+1. Vrednost zavarovanja: 10 × 2.400 $ = 24.000 $.
+2. Uteženo zavarovanje: 24.000 $ × 0,83 = 19.920 $.
+3. Health factor: 19.920 $ ÷ 12.000 $ = **1,66**.
+4. Meja izposoje: 24.000 $ × 0,805 = 19.320 $, torej je mogoče izposoditi še 7.320 $.
+5. Likvidacijska cena ETH, pri kateri je HF = 1: 12.000 $ ÷ (10 × 0,83) = **1.445,78 $**, padec za 39,8 % od 2.400 $.
+
+Kako izračunaš ceno za svojo pozicijo, preberi v vodniku [izračunaj svojo likvidacijsko ceno na Aave](/sl/blog/aave-likvidacijska-cena).
+
+### Kaj se spremeni z drugim sredstvom v zavarovanju?
+
+Pri dveh sredstvih v zavarovanju se vsako pred seštevanjem uteži s svojim pragom likvidacije. Obdrži 10 WETH (24.000 $, LT 83 %), dodaj 0,2 WBTC po ilustrativni ceni 81.500 $ (16.300 $, LT 78 % in LTV 73 % na Ethereum Core v bloku 26193284) in si izposodi 20.000 USDC:
+
+- Uteženo zavarovanje: 24.000 × 0,83 + 16.300 × 0,78 = 19.920 + 12.714 = 32.634.
+- Health factor: 32.634 ÷ 20.000 = **1,632**.
+- Povprečni prag likvidacije: 32.634 ÷ 40.300 = 80,98 %.
+- Meja izposoje: 24.000 × 0,805 + 16.300 × 0,73 = 31.219 $.
+
+### Kaj se spremeni, ko si izposodiš volatilno sredstvo?
+
+Ko je dolg v volatilnem sredstvu, health factor pade, ko cena tega sredstva zraste, ker je dolg vreden več. Položi 10.000 USDC (LT 78 % na Ethereum Core v bloku 26193284) in si izposodi WETH v vrednosti 6.000 $: HF = 7.800 ÷ 6.000 = **1,30**. Če ETH zraste za 30 %, je dolg vreden 7.800 $ in HF doseže 1,00. Zavarovanje je še vedno pomembno: pri ceni USDC 0,88 $ je HF = 8.800 × 0,78 ÷ 6.000 = 1,144.
+
+## Health factor, LTV in prag likvidacije: v čem je razlika?
+
+LTV (loan-to-value) omejuje, koliko si lahko izposodiš, prag likvidacije določa, kdaj je pozicijo mogoče likvidirati, health factor pa združi prag likvidacije s tvojim dejanskim dolgom. Aave V3 preverja LTV le pri izposoji. Dvig zavarovanja ali njegov izklop mora le ohraniti health factor pri 1 ali več, likvidatorji pa gledajo samo health factor.
+
+| Izraz                    | Kaj je                                                                  | Kje velja                                                                    | Primer: 10 WETH po 2.400 $ (24.000 $), 12.000 USDC dolga |
+| ------------------------ | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------- |
+| LTV (loan-to-value)      | Največ, kar si lahko izposodiš proti zavarovanju, v % njegove vrednosti | Le nove izposoje                                                             | 80,5 % za WETH: meja 19.320 $                            |
+| Prag likvidacije (LT)    | Delež vrednosti zavarovanja v %, ki šteje v health factor               | Likvidacija in dvigi (HF mora ostati pri 1 ali več)                          | 83 % za WETH: šteje 19.920 $                             |
+| Health factor (HF)       | Σ(zavarovanje × LT) ÷ dolg                                              | Pod 1,00 je pozicijo mogoče likvidirati                                      | 1,66                                                     |
+| Porabljena meja izposoje | Dolg ÷ (zavarovanje × LTV), merilnik, ki ga kažejo mnoge aplikacije     | Ni shranjena na verigi; izposoja, ki bi jo potisnila čez 100 %, je zavrnjena | 62,1 %                                                   |
+
+„Porabljena meja izposoje“ (borrow limit used) ni 1 ÷ HF (tu 60,2 %), ker temelji na LTV in ne na pragu likvidacije. Pove ti, koliko prostora za izposojo ti še ostane, ne pa, kako blizu je likvidacija.
+
+Ker dvigi niso omejeni z LTV, lahko dvig pripelje pozicijo bližje likvidaciji kot izposoja. Pri 10 WETH po 2.400 $ proti 12.000 USDC pogodba sprejme dvig do približno 3,98 WETH (9.542 $), kar pusti health factor pri 1,00. Izposoja se ustavi pri meji LTV, kjer je health factor še 1,031.
+
+Prag likvidacije je vedno vsaj tako visok kot LTV. Aktualne vrednosti 14. oktobra 2026, prebrane z enim multicallom na omrežje:
+
+| Trg           | Sredstvo       | LTV    | Prag likvidacije |
+| ------------- | -------------- | ------ | ---------------- |
+| Ethereum Core | WETH           | 80,5 % | 83 %             |
+| Ethereum Core | WBTC           | 73 %   | 78 %             |
+| Ethereum Core | USDC           | 75 %   | 78 %             |
+| Arbitrum      | WETH           | 80 %   | 84 %             |
+| Arbitrum      | WBTC           | 73 %   | 78 %             |
+| Arbitrum      | USDC (nativni) | 75 %   | 78 %             |
+
+Vrednosti za Ethereum so iz bloka 26193284 (20:58:47 UTC), za Arbitrum iz bloka 514855406 (20:58:57 UTC). Governance in Risk Stewards jih lahko spremenijo, zato sredstvo preveri v aplikaciji Aave, preden se nanje zaneseš.
+
+## Zakaj ti izposoja do maksimuma pusti health factor le okoli 1,03?
+
+Pri enem sredstvu v zavarovanju ti izposoja celotnega zneska, ki ga dopušča LTV, pusti health factor LT ÷ LTV, kar je le malo nad 1; pri več sredstvih je to uteženi LT ÷ uteženi LTV. Za WETH na Aave V3 Ethereum Core je to 83 ÷ 80,5 = 1,031 (blok 26193284, 14. oktober 2026). Pri 10 WETH po 2.400 $ (24.000 $) izposoja celotne meje 19.320 $ da HF = 19.920 ÷ 19.320 = 1,031 in premakne likvidacijsko ceno na 2.327,71 $, le 3,0 % pod 2.400 $. Isto deljenje da 1,068 za WBTC (78 ÷ 73) in 1,04 za USDC (78 ÷ 75) na Ethereum Core. Z drugimi besedami: pozicija, izposojena do meje, je od likvidacije oddaljena le nekaj odstotkov. Tabelo po sredstvih in nasvete za izbiro rezerve najdeš v vodniku [koliko rezerve ti da health factor](/sl/blog/varen-aave-health-factor).
+
+## Kaj se zgodi, ko health factor pade pod 1?
+
+Ko health factor na Aave V3 pade pod 1,00, lahko likvidator odplača del ali ves tvoj dolg in vzame tvoje zavarovanje s popustom, likvidacijskim bonusom. Na Ethereum Core je bil bonus za WETH v bloku 26193284 (14. oktober 2026) 5 %, zato te poplačilo 6.000 $ tvojega dolga stane 6.300 $ v WETH: 6.270 $ dobi likvidator, 30 $, protokolarna provizija v višini 10 % bonusa, pa gre v zakladnico Aave.
+
+Ena likvidacija lahko odplača do 50 % tvojega celotnega dolga ali do 100 % dolga v eni rezervi, ko je health factor 0,95 ali manj ali ko je tvoje zavarovanje ali dolg v zadevnih rezervah vreden manj kot 2.000 $. Zamrznjene (frozen) rezerve je še vedno mogoče likvidirati, zaustavljenih (paused) ne. Celotna pravila, primer z izračunom in kaj se zgodi z neizterljivim dolgom (bad debt), so v vodniku [kaj se zgodi pri likvidaciji na Aave](/sl/blog/kako-deluje-likvidacija-na-aave). Kako lahko ukrepaš, preden health factor doseže 1, pa preberi v vodniku [kako dvigniti health factor na Aave](/sl/blog/kako-se-izogniti-likvidaciji-na-aave).
+
+## Zakaj se health factor spreminja, tudi ko ne narediš ničesar?
+
+Tvoj health factor na Aave se spreminja sam od sebe, ker se ob vsakem branju na novo izračuna iz cen oraklja in nabranih obresti. Običajni vzroki:
+
+- **Cena tvojega zavarovanja pade.** Z WETH v zavarovanju in dolgom v USDC se health factor premika skupaj z ETH.
+- **Izposojeno sredstvo se podraži.** Pri volatilnem dolgu rast cene zniža health factor.
+- **Obresti se nabirajo.** Dolg navadno raste hitreje, kot zavarovanje prinaša, spremenljive obrestne mere za izposojo pa lahko poskočijo.
+- **Governance ali Risk Stewards znižajo prag likvidacije.** V V3 nov prag takoj velja za vse odprte pozicije.
+- **Položeni stablecoin doživi depeg (izgubo vezave na dolar) navzdol.** Cenovni adapter Aave za USDC na Ethereumu ceno omeji pri 1,04 $, cene pod 1 $ pa prepušča neposredno (blok 26193376, 14. oktober 2026).
+- **Orakelj je napačno nastavljen.** Marca 2026 je napaka v menjalnem razmerju wstETH povzročila likvidacije v E-Mode na trgih Ethereum Core in Prime.
+
+Znižanje LTV (vključno z LTV 0) ali zamrznitev rezerve omeji nove izposoje, ne zniža pa tvojega health factorja. Vsak vzrok je z datumi in primeri opisan v vodniku [zakaj tvoj health factor na Aave pada sam od sebe](/sl/blog/zakaj-je-padel-aave-health-factor).
+
+## Kako E-Mode spremeni health factor?
+
+E-Mode (Efficiency Mode) zviša LTV in prag likvidacije za sredstva, katerih cene se gibljejo skupaj, zato ista pozicija kaže višji health factor. Na Aave V3 Ethereum Core kategorija „ETH correlated“ uporablja LTV 93 %, prag likvidacije 95 % in likvidacijski bonus 1 % (blok 26193288, 14. oktober 2026). Njen nabor zavarovanj sestavljajo WETH, wstETH, cbETH, rETH, weETH, osETH in ETHx, WETH pa je edino sredstvo, ki si ga v njej lahko izposodiš.
+
+Kaj se v tej kategoriji spremeni za health factor:
+
+- **V formulo gre višji prag.** Položi wstETH v vrednosti 10.000 $ in si izposodi WETH v vrednosti 9.000 $: HF = 10.000 × 0,95 ÷ 9.000 = 1,056.
+- **Rezerva pri meji izposoje je tanjša.** 95 ÷ 93 = 1,0215, zato je pozicija, izposojena do meje, od likvidacije oddaljena približno 2,1 %.
+- **Šteje razmerje cen, ne cena v dolarjih.** Z wstETH v zavarovanju in dolgom v WETH padec ETH premakne obe strani skupaj. Sprememba menjalnega razmerja wstETH/ETH, ki ga uporablja orakelj, resnična ali posledica napake v nastavitvah, neposredno premakne HF. Napaka marca 2026 je to razmerje premaknila za približno 2,85 %, post-mortem Chaos Labs pa poroča o likvidacijah pozicij pod health factorjem približno 1,0288.
+
+Za vstop v kategorijo mora biti vsako sredstvo, ki si ga trenutno izposojaš, v njej izposojljivo, vsako sredstvo, ki ga uporabljaš kot zavarovanje, mora v njej ohraniti LTV, večji od nič, health factor pa mora ob nastavitvah kategorije ostati pri 1 ali več. Zato pozicija 10 WETH / 12.000 USDC na Ethereum Core ne more uporabljati kategorije „ETH correlated“: USDC ni v njenem naboru izposojljivih sredstev. Zavarovanje zunaj nabora kategorije ohrani svoj običajni LTV in prag (od V3.2). Če governance kategorijo označi kot izolirano (oznaka iz V3.7), dobi to zunanje zavarovanje LTV 0, a obdrži svoj prag: ne doda nobene zmožnosti izposoje, še vedno pa šteje v tvoj health factor. „ETH correlated“ na Ethereum Core v bloku 26193288 ni bila izolirana.
+
+## Ali je health factor na Aave V4 drugačen?
+
+Da. Aave V4 še vedno dovoljuje likvidacijo pod health factorjem 1, vendar število računa za vsak Spoke posebej, z enim faktorjem zavarovanja (collateral factor) na sredstvo namesto ločenih vrednosti LTV in praga likvidacije. Spoke je posojilni trg V4 z lastnimi nastavitvami tveganja, ki likvidnost črpa iz skupnega Huba. Po dnevniku sprememb v dokumentaciji Aave je V4 začel delovati na Ethereumu 30. marca 2026, na Avalanche 15. julija 2026, na Arc 16. septembra 2026 in na Base 7. oktobra 2026. V3 deluje naprej in vseh sedem trgov V3, obravnavanih tukaj, teče na V3.7.
+
+- **En health factor na Spoke.** Pozicije v različnih Spokih ne vplivajo druga na drugo. V V3 je enota trg: en Pool na enem omrežju.
+- **En faktor zavarovanja (CF) na sredstvo.** HF = Σ(vrednost zavarovanja × CF) ÷ vrednost dolga. Primer iz dokumentacije Aave: 10.000 $ v ETH pri CF 80 % proti 6.000 $ v GHO da 1,333. Na Ethereum Main Spoke je bil CF za WETH 14. oktobra 2026 83 % (Aave V4 API), enak njegovemu pragu likvidacije v V3, zato bi 10 WETH proti 12.000 USDC tudi tam pokazalo 1,66.
+- **Spremembe parametrov navadno veljajo za nove pozicije.** Obstoječa pozicija V4 obdrži stari CF, dokler si posojilojemalec ne izposodi več, ne dvigne ali ne spremeni nastavitev zavarovanja, razen če governance vsili posodobitev. V V3 znižanje praga takoj zadene vse odprte pozicije.
+- **Bolj tvegano zavarovanje plača več obresti.** User Risk Premium v V4 doda k obrestni meri za izposojo pribitek glede na kakovost zavarovanja, zato lahko dolg raste hitreje.
+- **Likvidacije delujejo drugače.** Close factorja (dela dolga, ki ga je mogoče odplačati naenkrat) ni: likvidatorji odplačajo le toliko, da HF dvignejo na ciljno vrednost Spoka (1,24 na Ethereum Main Spoke v bloku 26194078, 14. oktober 2026), bonus pa raste, ko HF pada.
+
+14. oktobra 2026 je DefiLlama kazal približno 17,09 milijarde $ TVL v Aave V3 in približno 0,66 milijarde $ v V4, brez izposojenih zneskov. Njegova številka za V4 je zajemala Ethereum, Avalanche in Arc, trga na Base pa še ne (preverjeno 15. oktobra 2026). Primeri v tem vodniku zajemajo le Aave V3. Tokenping pokriva obe različici, z enim opozorilom na trg V3 in enim na Spoke V4.
+
+## V čem se health factor na Aave razlikuje od tistega na Morpho?
+
+Morpho, še en posojilni protokol, gradi na isti zamisli, zavarovanju, uteženem s pragom in deljenem z dolgom, a z drugačnimi pravili okoli nje. Vsak trg Morpho Blue ima en žeton zavarovanja in en žeton posojila, zato ima tam vsako posojilo svoj health factor. Njegov likvidacijski LTV (LLTV) je določen ob nastanku trga, governance ga ne more spremeniti, izposojaš pa si lahko vse do njega, do health factorja 1,00. Na Aave V3 si vse tvoje zavarovanje in ves dolg na enem trgu delita en health factor, governance lahko spreminja prage, največja izposoja pa se ustavi pri nižjem LTV. [Vodnik o health factorju na Morpho](/sl/blog/morpho-health-factor-razlozen) opisuje njegovo formulo, primer z izračunom in Morphove trge Midnight s fiksno obrestno mero, Tokenpingova [nadzorna plošča za Morpho](/sl/morpho) pa te pozicije prikaže.
+
+## Kako preveriš svoj health factor na Aave?
+
+Svoj health factor na Aave V3 lahko preveriš v aplikaciji Aave, na nadzorni plošči, kot je Tokenpingova, ali s klicem `getUserAccountData` na pogodbi Pool izbranega trga. Vse tri poti izhajajo iz istih cen, stanj in parametrov na verigi, zato bi se morale tesno ujemati. Aplikacija Aave število izračuna v tvojem brskalniku; Tokenping in neposreden klic ga prebereta iz `getUserAccountData`.
+
+- **Aplikacija Aave (app.aave.com)** prikaže health factor za izbrani trg, zato za vsako omrežje preklopi trg. Na nizek health factor opozori med izvajanjem transakcij, ne pošilja pa potisnih obvestil, stran s pomočjo Aave pa posojilojemalce prosi, naj svoj health factor redno spremljajo.
+- **Tokenpingova nadzorna plošča** ti omogoča, da [preveriš svoj health factor na Aave na 22 omrežjih](/sl/aave): vsak trg Aave V3 na 21 omrežjih (24 trgov, med njimi Core, Prime, EtherFi in Horizon na Ethereumu) in vsak Spoke Aave V4 na Ethereumu, Avalanche, Arc in Base. Poveži denarnico in prikaže zavarovanje, dolg in health factor za vsak trg, kjer ima denarnica pozicijo ali shranjeno opozorilo, ostale pa zloži pod „Drugi trgi“. Vse prebere samo s klici view, zato na Aave ničesar ne odobriš in ne podpišeš.
+- **Pogodba.** `getUserAccountData(address)` na Poolu V3 deluje za katerikoli naslov. Vrne skupno zavarovanje in dolg (USD, 8 decimalk), razpoložljive izposoje, povprečni prag likvidacije in LTV (bazične točke: 8300 pomeni 83 %) ter health factor z 18 decimalkami.
+
+| Omrežje                                | Pogodba Aave V3 Pool                         |
+| -------------------------------------- | -------------------------------------------- |
+| Ethereum (trg Core)                    | `0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2` |
+| Polygon, Arbitrum, Optimism, Avalanche | `0x794a61358D6845594F94dc1DB02A252b5b4814aD` |
+| Base                                   | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5` |
+| Gnosis                                 | `0xb50201558B00496A145fE76f7424749556E326D8` |
+
+Vseh sedem Poolov je 14. oktobra 2026 sporočilo revizijo 11 (V3.7).
+
+Če ne želiš stalno preverjati, ti lahko Tokenping pošlje sporočilo na Signal, Telegram ali e-pošto, dokler je tvoj health factor pod ravnjo, ki jo izbereš. Opozorila stanejo <AlertPrice />, plačaš jih na Arbitrumu. Tokenping preverja vsakih 5 minut in sporočilo ponovi ob vsakem preverjanju, dokler ostajaš pod pragom, zato te lahko skok cene, zaradi katerega health factor med dvema preverjanjema pade pod 1,00, še vedno prej likvidira. Ena možnost je, da opozorilo nastaviš na health factor, pri katerem še želiš ukrepati: pri izbiri ti pomaga vodnik [koliko rezerve ti da health factor](/sl/blog/varen-aave-health-factor), skozi korake pa te vodi [kako nastaviš opozorilo za health factor](/sl/blog/nastavitev-aave-health-factor-opozorila). Druge možnosti opozoril in avtomatizacije, vključno z orodji, ki lahko dolg odplačajo namesto tebe, najdeš v vodniku [primerjava orodij za opozorila o likvidaciji na Aave](/sl/blog/orodja-za-aave-opozorila-o-likvidaciji).
+
+## Viri
+
+- [Aave V3 GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): formula za health factor, 18 decimalk, največji uint256 brez dolga (veja main, dostopano 14. oktobra 2026)
+- [Aave V3 ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) in [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol): LTV se preverja le pri izposojah, health factor pri dvigih in izklopu zavarovanja, pravila za vstop v E-Mode, sprožilec likvidacije (dostopano 14. oktobra 2026, ponovno preverjeno 15. oktobra 2026)
+- [Aave V3 LiquidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): pravilo close factorja 50 % in 100 %, protokolarna provizija, vzeta iz bonusa (dostopano 14. oktobra 2026)
+- [Referenca za Aave V3 Pool](https://aave.com/docs/aave-v3/smart-contracts/pool): getUserAccountData (dostopano 14. oktobra 2026)
+- [Dokumentacija Aave: pozicije](https://aave.com/docs/aave-v3/markets/positions): health factor null brez posojila (dostopano 14. oktobra 2026)
+- [Dokumentacija Aave: pregled V3](https://aave.com/docs/aave-v3/overview): health factor se premika s cenami oraklja in obrestmi (dostopano 14. oktobra 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV, prag, bonus in protokolarna provizija za likvidacijo v bloku 26193284 (dostopano 14. oktobra 2026)
+- [PoolDataProvider, Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): parametri v bloku 514855406 (dostopano 14. oktobra 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): cena WETH in zgornja meja adapterja za USDC v bloku 26193376 (dostopano 14. oktobra 2026)
+- [Aave V3 Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): nastavitve E-Mode „ETH correlated“ in oznaka izolacije v bloku 26193288, revizija Poola (dostopano 14. oktobra 2026)
+- [Funkcije Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): zavarovanje zunaj kategorije E-Mode obdrži svoj LTV in prag (dostopano 15. oktobra 2026)
+- [Izolirani E-Mode v Aave V3.7](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/isolated-emode.md): LTV 0 za zunanje zavarovanje, blokiran vstop, health factor ob vklopu nespremenjen (dostopano 15. oktobra 2026)
+- [aave-price-feeds](https://github.com/aave-dao/aave-price-feeds): adapter za stablecoine z zgornjo mejo (dostopano 14. oktobra 2026)
+- [Aave V3 Risk Stewards](https://github.com/aave-dao/aave-v3-risk-stewards): kdo lahko prilagaja LTV in prage (dostopano 14. oktobra 2026)
+- [Post-mortem Chaos Labs, menjalno razmerje wstETH](https://governance.aave.com/t/post-mortem-exchange-rate-misallignment-on-wsteth-core-and-prime-instances/24269): objavljeno 10. marca 2026 (dostopano 14. oktobra 2026)
+- [Dnevnik sprememb dokumentacije Aave](https://aave.com/docs/resources/changelog): uvajanje V3.7, datumi zagona V4 (dostopano 14. oktobra 2026)
+- [Dokumentacija Aave V4](https://aave.com/docs/aave-v4) in [pozicije V4](https://aave.com/docs/aave-v4/positions): health factor po Spokih, faktor zavarovanja, User Risk Premium (dostopano 14. oktobra 2026)
+- [Pregled Aave V4 na GitHubu](https://github.com/aave/aave-v4/blob/main/docs/overview.md): dinamična konfiguracija tveganja (dostopano 14. oktobra 2026)
+- [Aave V4 API](https://api.v4.aave.com/graphql): nastavitve rezerv na Ethereum Main Spoke (dostopano 14. oktobra 2026)
+- [Aave V4 Ethereum Main Spoke](https://etherscan.io/address/0x94e7A5dCbE816e498b89aB752661904E2F56c485): ciljni health factor v bloku 26194078 (dostopano 14. oktobra 2026)
+- [DefiLlama protocols API](https://api.llama.fi/protocols): TVL Aave V3 in V4 (dostopano 14. oktobra 2026); omrežja, upoštevana za V4 (dostopano 15. oktobra 2026)
+- [Izvorna koda aplikacije Aave, useUserSummaryAndIncentives.ts](https://github.com/aave/interface/blob/main/src/hooks/pool/useUserSummaryAndIncentives.ts): aplikacija health factor izračuna v brskalniku (dostopano 15. oktobra 2026)
+- [Pomoč Aave: likvidacije](https://aave.com/help/borrowing/liquidations) (dostopano 14. oktobra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._

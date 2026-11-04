@@ -1,0 +1,133 @@
+export const meta = {
+  slug: "zakaj-dvig-ali-izposoja-na-aave-ne-uspe",
+  title: "Zakaj dvig ali izposoja na Aave ne uspe? 9 vzrokov",
+  description:
+    "Zakaj dvig, izposoja ali odplačilo na Aave V3 ne uspe: preverba health factorja, neizposojena likvidnost, zgornje meje, zamrznjene ali ustavljene rezerve.",
+  h1: "Zakaj moj dvig, izposoja ali odplačilo na Aave ne uspe?",
+  publishedAt: "2026-10-29",
+  primaryQuestion: "Zakaj transakcija za dvig, izposojo ali odplačilo na Aave ne uspe?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Transakcija na Aave V3 ne uspe, ko jo zavrne ena od preverb pogodbe Pool, razlog pa je skoraj vedno eden od devetih.
+  Dvig bi tvoj health factor (faktor zdravja) spustil pod 1. Rezerva ima manj neizposojene likvidnosti, kot je zahtevaš.
+  Zgornja meja položenih sredstev (supply cap) ali zgornja meja izposoje (borrow cap) sredstva je polna. Rezerva je
+  zamrznjena (brez novih položitev in izposoj) ali ustavljena (nič ne gre, tudi odplačila ne). Sredstva ni mogoče
+  izposoditi ali ga ni mogoče izposoditi v tvoji kategoriji E-Mode. Imaš zavarovanje z razmerjem med posojilom in
+  vrednostjo (LTV) 0, ki mora iti prvo. Ali pa odplačilo navaja dolg, ki ga nimaš, ali žetone, ki jih nisi odobril. Na
+  Ethereum Core je bilo 29. oktobra 2026 zamrznjenih 35 od 66 navedenih rezerv, meja za LBTC je bila polna do zadnjih
+  0,07 LBTC, od 2.347,5 milijona položenih USDC pa je bilo za dvig na voljo le 134,4 milijona.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Številke in številke blokov, v katerih so bile prebrane: content/blog/snapshots/why-aave-withdraw-or-borrow-fails.md */}
+
+## Katere preverbe mora prestati transakcija na Aave?
+
+Vsaka položitev, dvig, izposoja in odplačilo na Aave V3 gre skozi pogodbo Pool, Pool pa, preden premakne žeton, opravi seznam preverb v knjižnici `ValidationLogic`. Vsaka preverba, ki ne uspe, ustavi celotno transakcijo z imenovano napako: `ReserveFrozen`, `SupplyCapExceeded`, `HealthFactorLowerThanLiquidationThreshold` in tako naprej. Tvoja denarnica običajno pokaže le „execution reverted“ in kratko šestnajstiško kodo, ker imena živijo v kodi Aave, ne v denarnici. Aplikacija Aave večino teh pogojev preveri, preden podpišeš, zato pogosto zavrne, še preden sploh vidiš transakcijo.
+
+Preverbe se razlikujejo glede na dejanje. Dvig potrebuje aktivno, neustavljeno rezervo, stanje, vsaj tolikšno kot znesek, in, če imaš kakršenkoli dolg in sredstvo šteje kot zavarovanje, health factor, ki tudi po dvigu ostane 1 ali več. Izposoja potrebuje aktivno, neustavljeno, nezamrznjeno rezervo z vklopljeno izposojo, prostor pod zgornjo mejo izposoje in dovolj zavarovanja pri tvojem LTV. Položitev potrebuje nezamrznjeno rezervo s prostorom pod zgornjo mejo položenih sredstev. Odplačilo potrebuje le aktivno, neustavljeno rezervo in dolg v tem sredstvu. Devet spodnjih vzrokov sledi temu seznamu, približno v vrstnem redu, v katerem boš nanje najverjetneje naletel.
+
+Ta vodnik pokriva Aave V3. Spoki v Aave V4 imajo svojo konfiguracijo, Morpho pa nima nobenega od teh mehanizmov razen oraklja (vira cene) in health factorja: trg Morpho nima zgornjih mej, zamrznitve ali ustavitve.
+
+## 1. Dvig bi tvoj health factor spustil pod 1
+
+Na to posojilojemalci naletijo najpogosteje. Ko dvigneš sredstvo, ki ga uporabljaš kot zavarovanje, medtem ko imaš dolg, Pool po dvigu ponovno izračuna tvoj račun in zahteva health factor vsaj 1 (`HealthFactorLowerThanLiquidationThreshold`). Ista preverba se izvede, ko sredstvo izklopiš kot zavarovanje ali aTokene preneseš na drug naslov. Ne izvede se, ko nimaš dolga, zato je pri čisti poziciji s položenimi sredstvi vedno mogoče dvigniti celotno stanje.
+
+Vzemi 10 WETH na Ethereum Core po ceni oraklja 2.309,84 $ 29. oktobra 2026 (23.098,41 $), prag likvidacije (liquidation threshold) 84 % in dolg 12.000 USDC. [Health factor](/sl/blog/aave-health-factor-razlozen) je 23.098,41 × 0,84 ÷ 12.000 = 1,617. Da ostane točno 1, potrebuješ 12.000 ÷ 0,84 = 14.285,71 $ v WETH ali 6,185 WETH, zato lahko dvigneš največ 3,815 WETH. Zahtevaj 4 in transakcija se razveljavi; zahtevaj 3,815 in gre skozi, pusti pa pozicijo, ki jo naslednji majhen padec cene naredi likvidabilno. Največji znesek v aplikaciji Aave je ta številka, dvig vsega pa je najhitrejši način, da varno pozicijo spremeniš v takšno, ki že v eni uri potrebuje [opozorilo pred likvidacijo](/sl/blog/nastavitev-aave-health-factor-opozorila).
+
+Izposoja ima strožjo sestro. Nova izposoja mora health factor pustiti pri 1 ali več in se mora prilegati tudi pod tvoj tehtani LTV: zavarovanje × LTV mora pokriti dolg (`CollateralCannotCoverNewBorrow`). Pri WETH z LTV 81 % zgornjih 10 WETH podpira največ 18.709,71 $ dolga, pozicija, ki si izposodi vse, pa začne pri health factorju 84 ÷ 81 = 1,037. [Kakšen je varen health factor](/sl/blog/varen-aave-health-factor) razloži, zakaj je to tanko izhodišče.
+
+## 2. Rezerva ima manj neizposojene likvidnosti, kot je želiš
+
+Aave posoja, kar položijo vlagatelji, zato rezerva drži le delež, ki si ga ni nihče izposodil. Dvig ali izposoja, večja od tega deleža, ne uspe, in ta primer nima imena napake Aave: aToken poskusi prenesti osnovni žeton ven, razveljavi pa ga pogodba žetona sama, pri USDC z „ERC20: transfer amount exceeds balance“. Preverba izposoje zahteva le, da je celotna ponudba aTokenov vsaj tolikšna kot znesek, kar ujame absurdne zahteve in nič drugega.
+
+Na Ethereum Core je bilo 29. oktobra 2026 položenih 2.347.525.372,91 USDC, izposojenih 2.213.199.103,54 USDC, pogodba aTokena pa je držala 134.360.379,94 USDC: 94,28 % izkoriščenosti, 5,72 % položenih sredstev na voljo za dvig ali izposojo. Vlagatelj, ki bi želel oditi z 200 milijoni USDC, tega ne bi mogel, in nihče ne bi mogel, dokler nekdo ne bi odplačal ali položil. Vodnik [kako delujejo obrestne mere na Aave](/sl/blog/aave-obrestne-mere) pokaže, kako je to videti v praksi: 14. oktobra 2026 je en sam dvig 133.898.000 USDC isto rezervo potisnil na 99,50 % izkoriščenosti, obrestno mero za izposojo pa v enem bloku s 4,50 % na 13,67 %.
+
+Ko je težava likvidnost, delujejo štiri stvari. Dvigni manjši znesek, do tega, kar pogodba drži. Počakaj: krivulja obrestnih mer je zasnovana tako, da likvidnost privabi nazaj, in skok 14. oktobra je minil v približno 36 minutah, čeprav tega nič ne zagotavlja. Dvigni drugo sredstvo za zavarovanje, če ga imaš in health factor to dopušča. In če poskušaš odplačati dolg v USDC, imaš pa aUSDC, uporabi `repayWithATokens`: tvoje aTokene sežge proti dolgu, ne da bi premaknil en sam USDC, zato sploh ne potrebuje likvidnosti.
+
+## 3. Zgornja meja položenih sredstev je polna
+
+Vsaka rezerva ima zgornjo mejo položenih sredstev, ki jo nastavijo Aavejevi skrbniki tveganj (risk stewards) in upravljanje (governance), položitev, ki bi skupni znesek potisnila čeznjo, pa ne uspe s `SupplyCapExceeded`. Meja 0 pomeni brez meje. Meja šteje obstoječe aTokene in obresti, nabrane za zakladnico, zato se polni sama od sebe, ko se obresti nabirajo, ne da bi kdo karkoli položil.
+
+Meje omejujejo pogosteje, kot ljudje pričakujejo. 29. oktobra 2026 je bila meja za LBTC na Ethereum Core 2.690 LBTC proti 2.689,93 položenim: preostali prostor je bil 0,07 LBTC, in posojilojemalec, ki bi želel poziciji pod pritiskom dodati 1 LBTC, tega ne bi mogel. sUSDe je bil pri 96,9 % svoje meje, tBTC pri 98,9 %, USDe pri 91,7 %, weETH pri 91,2 % in WBTC pri 89,4 %. Meje se premikajo v obe smeri. 10. julija 2026 je LlamaRisk znižal mejo položenih sredstev za USDm na Aavejevi instanci MegaETH z 1.000.000.000 na 300.000.000, ker je bila meja „well above current demand“ (precej nad trenutnim povpraševanjem); skrbniki tveganj meje dvignejo, ko pride povpraševanje, običajno v nekaj dneh.
+
+Za posojilojemalca je meja pomembna kot zaprta vrata: dodajanje zavarovanja je eden od dveh načinov, kako dvigniti health factor, polna meja pa ga za to sredstvo odstrani. Odplačilo dolga, drugi način, še vedno deluje, prav tako dodajanje drugega sredstva za zavarovanje, katerega meja ima prostor.
+
+## 4. Zgornja meja izposoje je polna
+
+Zgornje meje izposoje enako delujejo za dolg: skupni spremenljivi dolg rezerve po tvoji izposoji ne sme preseči meje (`BorrowCapExceeded`), 0 pa pomeni brez meje. Preverba se izvede pri vsaki izposoji, zato meja, ki je že prekoračena, ustavi vsako novo izposojo tega sredstva, dokler kdo ne odplača. Polna meja izposoje ne ustavi ničesar drugega: odplačila, dvigi in likvidacije gredo skozi.
+
+tBTC na Ethereum Core je skrajni primer: izposoja je bila 29. oktobra 2026 vklopljena, a meja je bila 1 tBTC, izposojenih pa je bilo že 2,57 tBTC, zato se je razveljavila že najmanjša izposoja. Pri USDC je bilo izposojenih 2.213,2 milijona proti meji 2.700 milijonov, 82,0 % zasedeno, s 486,8 milijona prostora; USDT je bil pri 80,8 %. Ko se meje za stablecoine napolnijo, izposoja ne uspe, čeprav ima rezerva morda še veliko likvidnosti.
+
+## 5. Rezerva je zamrznjena
+
+Zamrznjena rezerva ne sprejema novih položitev in novih izposoj (`ReserveFrozen` pri obeh). Dokumentacija Aave za Pool Configurator navaja, kaj še deluje: odplačila, likvidacije in dvigi. Zamrznitev je način, kako upravljanje postopno ukine sredstvo, ne da bi koga ujelo; [kaj se zgodi, ko Aave zapira trg](/sl/blog/zapiranje-aave-trga) gre skozi korake.
+
+Zamrznjene rezerve niso redke. 29. oktobra 2026 je bilo na Ethereum Core zamrznjenih 35 od 66 rezerv: CRV, MKR, UNI, LUSD, FRAX, sDAI, crvUSD, FBTC in dolg seznam žetonov Pendle PT po zapadlosti, skoraj vse tudi z mejama položenih sredstev in izposoje 1. Če imaš v kateri še zavarovanje, ga lahko dvigneš in iz njega si lahko likvidiran, ne moreš pa ga dopolniti.
+
+## 6. Rezerva je ustavljena
+
+Ustavitev (pause) je stikalo za nujne primere. Ustavljena rezerva zavrne vse: položitev, izposojo, odplačilo, dvig, likvidacijo in prenose aTokenov (`ReservePaused`). 29. oktobra 2026 ni bila ustavljena nobena rezerva na Ethereum Core, v običajnih tednih pa ni nobena.
+
+Ustavitev je že bila uporabljena. 4. novembra 2023 je Aavejev Guardian po prijavi kritičnega hrošča v programu nagrad (bug bounty) ustavil Aave V2 na Ethereumu in nabor sredstev na V3 na Arbitrumu, Avalanche, Optimismu in Polygonu. Približno teden dni nihče ni mogel odplačati ali dodati zavarovanja na teh rezervah, medtem ko so se cene še naprej premikale. Instance V3 so bile ponovno zagnane 12. novembra 2023, V2 na Ethereumu 13. novembra po obdobju odloga za likvidacije (grace period) približno treh ur za posojilojemalce WETH, CRV na V3 na Polygonu pa 16. novembra. Danes je to obdobje odloga del protokola: likvidacija med obdobjem odloga rezerve ne uspe z `LiquidationGraceSentinelCheckFailed`, kar posojilojemalcem, ki niso imeli dostopa, da kratko okno za odplačilo, preden ukrepajo likvidatorji.
+
+Če tvoja transakcija ne uspe z napako ustavitve, na Aave ne moreš narediti ničesar, dokler se ustavitev ne odpravi. Čas izkoristi, da imaš sredstva za odplačilo pripravljena v pravem omrežju, ker obdobje odloga po ponovnem zagonu določi upravljanje ali Guardian in je bilo že tako kratko kot tri ure.
+
+## 7. Izposoja tega sredstva je izklopljena ali ni dovoljena v tvoji kategoriji E-Mode
+
+Mnoga sredstva je mogoče položiti kot zavarovanje, ne pa izposoditi. Na Ethereum Core je bila 29. oktobra 2026 izposoja izklopljena na 15 nezamrznjenih rezervah, med njimi wstETH, cbETH, rETH, weETH, LBTC, eBTC, AAVE in XAUt, in izposoja katerega koli od teh sredstev ne uspe z `BorrowingNotEnabled`. Zastavico nastavi upravljanje za vsako rezervo posebej, v aplikaciji Aave pa je vidna kot manjkajoči gumb za izposojo.
+
+Če si v [kategoriji E-Mode](/sl/blog/aave-e-mode-razlozen), to pravilo nadomesti drugo: izposodiš si lahko le sredstva iz nabora kategorije za izposojo, vse drugo pa ne uspe z `NotBorrowableInEMode`, tudi sredstvo, ki bi si ga zunaj kategorije lahko izposodil. Kategorija „ETH correlated“ na Ethereum Core ti na primer dovoli izposojo WETH in ničesar drugega. Izstop iz kategorije izposojo popravi, a izstop opravi svoje preverbe: vsako sredstvo, ki ga dolguješ, mora biti mogoče izposoditi zunaj kategorije, tvoj health factor pa mora biti z običajnimi, nižjimi pragovi še vedno 1 ali več (`InvalidDebtInEmode`, `InvalidCollateralInEmode`, `HealthFactorLowerThanLiquidationThreshold`).
+
+## 8. Imaš zavarovanje z LTV 0
+
+Upravljanje nastavi LTV sredstva na 0, ko želi, da sredstvo ne podpira več novega dolga, obstoječe pozicije pa tečejo naprej. 29. oktobra 2026 je bilo na Ethereum Core 11 nezamrznjenih rezerv vklopljenih kot zavarovanje z LTV 0, med njimi DAI (prag likvidacije 77 %), LINK, PYUSD, USDe, sUSDe, USDS, EURC in XAUt. Tako sredstvo prek svojega praga likvidacije še vedno šteje v tvoj health factor, tvoji zmožnosti izposoje pa ne doda ničesar. Iz tega sledita dve preverbi.
+
+Prva je pri izposoji. Če ima vse zavarovanje, ki si ga vklopil, LTV 0, je tvoj tehtani LTV 0 in vsaka izposoja ne uspe z `LtvValidationFailed`. Pri mešanici, recimo DAI in WETH, izposoja gre skozi, omejena le z WETH.
+
+Druga je pri dvigu in ljudi preseneti. Če imaš dolg in kakršnokoli vklopljeno zavarovanje z LTV 0, mora biti sredstvo, ki ga dvigneš, preneseš ali izklopiš kot zavarovanje, tudi samo sredstvo z LTV 0, sicer transakcija ne uspe z istim `LtvValidationFailed`. Komentar v kodi sam pove namen: pravilo „ensures that a multi-collateral position needs to withdraw/transfer the ltv0 asset first“ (zagotavlja, da mora pozicija z več zavarovanji najprej dvigniti ali prenesti sredstvo z LTV 0). Posojilojemalec z DAI in WETH, ki poskuša dvigniti nekaj WETH, je torej zavrnjen, dokler DAI ni ven; za sam dvig DAI pa še vedno velja preverba health factorja. Rešitev je vrstni red: najprej dvigni sredstvo z LTV 0 ali odplačaj dovolj, da health factor dopušča oboje.
+
+## 9. Odplačilo navaja dolg, ki ga nimaš, ali žetone, ki jih nisi odobril
+
+Odplačila so najpreprostejše dejanje, pa vseeno ne uspejo, običajno iz enega od petih razlogov.
+
+- **Ni dolga te vrste.** `NoDebtOfSelectedType` pomeni, da pogodba Pool, ki si jo poklical, za ta naslov ne drži spremenljivega dolga v tem sredstvu. Običajni vzrok je napačen trg: Ethereum ima ločene instance Core, Prime in Lido, vsako s svojo pogodbo Pool, in ista denarnica lahko na eni dolguje USDC, na drugi pa nič. Tudi trgi vsakega omrežja so ločeni.
+- **Način obrestne mere, ki ne obstaja več.** Sprejet je le spremenljivi način (2); izposoja s stabilno obrestno mero je iz kode odstranjena, klic z načinom 1 pa ne uspe z `InvalidInterestRateModeSelected`.
+- **Ni dovoljenja (allowance).** Pool odplačilo potegne s `transferFrom`, zato žeton potrebuje odobritev vsaj za znesek ali podpisan permit. Brez tega pogodba žetona transakcijo razveljavi, še preden se izvedejo preverbe Aave.
+- **Odplačilo za nekoga drugega brez zneska.** Odplačilo v imenu drugega naslova z vrednostjo „ves dolg“ (`type(uint256).max`) ne uspe z `NoExplicitAmountToRepayOnBehalf`; navedi znesek.
+- **Prah (dust).** Obresti se nabirajo vsako sekundo, zato odplačilo točnega stanja, ki si ga videl pred minuto, pusti nekaj wei dolga. Da dolg povsem poravnaš, odplačaj z največjo vrednostjo, ki jo Pool omeji na to, kar dolguješ.
+
+## Vzroki, ki jih ne rabiš več iskati
+
+Dve stari razlagi ne veljata več. Isolation Mode in njegove zgornje meje dolga (debt ceilings) so bili v Aave V3.7 odstranjeni, prav tako siloed borrowing, zato danes nobena izposoja ne spodleti, ker je sredstvo izolirano ali je dosežena zgornja meja. Izposoje s stabilno obrestno mero pa ni več od V3.2, zato nič ne spodleti pri preklopu obrestne mere. Če starejši vodnik navaja kaj od tega, opisuje različico Aave, ki ni več nameščena.
+
+## Kaj narediti, ko transakcija med padcem cene ne uspe
+
+Neuspešna transakcija je na mirnem trgu nadloga, na padajočem pa težava, ker je ura, ki jo porabiš za diagnozo, ura, ki jo potrebuje tvoj health factor. Kratek vrstni red korakov:
+
+1. **Preberi napako.** Simuliraj transakcijo v denarnici ali šestnajstiški selektor prilepi v dekoder raziskovalca blokov; zgornja imena ti povedo, v katerem primeru si.
+2. **Raje odplačaj, kot da dodajaš zavarovanje.** Odplačilo deluje pri zamrznjenih rezervah in polnih mejah položenih sredstev, z `repayWithATokens` pa tudi pri prazni likvidnosti. Dodajanje zavarovanja je odvisno od meje s prostorom in nezamrznjene rezerve.
+3. **Poskusi manjše zneske.** Likvidnost in meje so količine; dvig ali izposoja, ki se prilega, gre skozi, medtem ko celoten znesek ne uspe.
+4. **Uporabi drugo sredstvo.** Drugo zavarovanje za dvig ali drugo sredstvo za odplačilo je pogosto na voljo, ko je prvo blokirano.
+5. **Preveri instanco in omrežje.** Odplačilo, poslano za pravo sredstvo na napačno pogodbo Pool, ne uspe z `NoDebtOfSelectedType` in te stane gas in čas.
+6. **Naslednjič prejmi opozorilo prej.** Vsak od teh primerov zahteva nekaj minut, da ga obideš. Opozorilo za health factor, nastavljeno z dovolj rezerve, ti kupi te minute.
+
+Tokenping vsakih 5 minut preveri tvoj Aave health factor, na vseh trgih Aave V3 na 21 omrežjih in v vseh Spokih Aave V4, in ti pošlje sporočilo na Signal, Telegram ali e-pošto, ko je pod pragom, ki ga izbereš (od 1,1 do 10), ter ga ponavlja ob vsaki preverbi, dokler si health factor ne opomore. Številko bere iz `getUserAccountData`, isto, ki jo uporablja preverba dviga. Opozorilo ne more ukrepati namesto tebe in nič v tem vodniku ne prepreči likvidacije; pove ti, katera vrata so zaprta, da najprej poskusiš odprta. [Svoj Aave V3 health factor lahko preveriš](/sl/aave), ne da bi plačal; opozorila stanejo <AlertPrice />, eno za vsak trg ali Spoke. [Kako se izogniti likvidaciji na Aave](/sl/blog/kako-se-izogniti-likvidaciji-na-aave) podrobno pokriva odločitev med odplačilom in dodajanjem zavarovanja, [zakaj ti je padel health factor](/sl/blog/zakaj-je-padel-aave-health-factor) pa vzroke, na katere se odzivaš.
+
+## Viri
+
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol), [BorrowLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/BorrowLogic.sol) in [GenericLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): vse zgoraj navedene preverbe, vrstni red, v katerem se izvedejo, komentar o LTV 0 in zastavica za ničelni LTV (aave-v3-origin main, dostopano 29. oktobra 2026)
+- [Errors.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/helpers/Errors.sol): imena napak in njihovi opisi (aave-v3-origin main, dostopano 29. oktobra 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): `getAllReservesTokens` ter za vsako rezervo `getReserveConfigurationData`, `getReserveCaps`, `getPaused` in `getReserveData`, v bloku 26296985 (dostopano 29. oktobra 2026)
+- [aEthUSDC](https://etherscan.io/address/0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c): USDC, ki ga drži pogodba aTokena, v bloku 26296985 (dostopano 29. oktobra 2026)
+- [Aave Oracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): ceni WETH in USDC v bloku 26296985 (dostopano 29. oktobra 2026)
+- [Dokumentacija Aave: Pool Configurator](https://aave.com/docs/aave-v3/smart-contracts/pool-configurator): kaj dopuščajo zamrznjene in ustavljene rezerve, meje 0 (dostopano 29. oktobra 2026)
+- [Aave v2/v3 security incident 04/11/2023](https://governance.aave.com/t/aave-v2-v3-security-incident-04-11-2023/15335): ustavitve 4. novembra 2023, ponovni zagoni 12., 13. in 16. novembra ter obdobje odloga (dostopano 29. oktobra 2026)
+- [Funkcije Aave V3.2](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.2/Aave-v3.2-features.md): odstranitev izposoje s stabilno obrestno mero (dostopano 29. oktobra 2026)
+- [Aave V3.7: odstranitev isolation mode in siloed borrowing](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.7/mode-removal.md) (dostopano 29. oktobra 2026)
+- [Risk Stewards: Supply and Borrow Cap Reductions on Aave V3 / 2026.07.10](https://governance.aave.com/t/risk-stewards-supply-and-borrow-cap-reductions-on-aave-v3-2026-07-10/25296): znižanja mej, ki jih je LlamaRisk predlagal za MegaETH, izvedena 14. julija 2026 (dostopano 29. oktobra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._

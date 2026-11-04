@@ -131,6 +131,14 @@ const COPY: Partial<Record<Locale, CopyRules>> = {
     wrongAddress: /(?<!\p{L})(?:Vi|Vas|Vam|Vama|Vaš\p{L}*)(?!\p{L})/u,
     claims: /u stvarnom vremenu|trenutn\p{L}+ (?:upozorenj|obavijest)|multi[- ]?protokol/iu,
   },
+  sl: {
+    // The channels are inflected ("Signalu ... e-pošti"), so only their order is checked.
+    h1Channels: /Signal.*e-pošt/iu,
+    badges: ["Signal", "E-pošta"],
+    // Informal ti throughout: never the formal vi, vas, vam or vaš.
+    wrongAddress: /(?<!\p{L})(?:vi|vas|vam|vami|vaš\p{L}*)(?!\p{L})/iu,
+    claims: /v realnem času|takojšnj\p{L}+ (?:opozoril|obvestil)|multi[- ]?protokol/iu,
+  },
 };
 
 const TRANSLATED = LOCALES.filter(locale => locale !== "en");

@@ -31,6 +31,8 @@ import {
   ptOnMarket,
   roForMarket,
   roOnMarket,
+  slForMarket,
+  slOnMarket,
   trForMarket,
   trOnMarket,
   viMarket,
@@ -310,6 +312,29 @@ describe("Croatian formatting", () => {
     expect(hrForMarket("Base")).toBe("za mrežu Base");
     expect(hrForMarket("Base (V4 Coinbase Stocks)")).toBe("za tržište Base (V4 Coinbase Stocks)");
     expect(hrForMarket("USDC | cbBTC (86%)", "market")).toBe("za tržište USDC | cbBTC (86%)");
+  });
+});
+
+describe("Slovenian formatting", () => {
+  it("joins with in and ali, writes Slovenian dates, a decimal comma, the dual and the market wording", () => {
+    expect(joinList("sl", ["Signal", "Telegram", "e-pošta"])).toBe("Signal, Telegram in e-pošta");
+    expect(joinList("sl", ["Signal", "e-pošta"], "disjunction")).toBe("Signal ali e-pošta");
+    expect(formatLongDate("sl", "2026-10-14")).toBe("14. oktober 2026");
+    expect(formatDecimal("sl", "1.42")).toBe("1,42");
+    const networks = (n: number) =>
+      plural("sl", n, { one: `${n} omrežje`, two: `${n} omrežji`, few: `${n} omrežja`, other: `${n} omrežij` });
+    expect(networks(1)).toBe("1 omrežje");
+    expect(networks(2)).toBe("2 omrežji");
+    expect(networks(3)).toBe("3 omrežja");
+    expect(networks(29)).toBe("29 omrežij");
+    expect(networks(101)).toBe("101 omrežje");
+    expect(networks(102)).toBe("102 omrežji");
+    expect(slOnMarket("Arbitrum")).toBe("na omrežju Arbitrum");
+    expect(slOnMarket("Ethereum (V4 Lido)")).toBe("na trgu Ethereum (V4 Lido)");
+    expect(slOnMarket("Base", "network")).toBe("na omrežju Base");
+    expect(slForMarket("Base")).toBe("za omrežje Base");
+    expect(slForMarket("Base (V4 Coinbase Stocks)")).toBe("za trg Base (V4 Coinbase Stocks)");
+    expect(slForMarket("USDC | cbBTC (86%)", "market")).toBe("za trg USDC | cbBTC (86%)");
   });
 });
 

@@ -1,0 +1,207 @@
+export const meta = {
+  slug: "morpho-health-factor-razlozen",
+  title: "Morpho health factor razložen: formula in primeri",
+  description:
+    "Kaj je health factor posojila na Morpho, kako ga izračunata Morpho Blue in Midnight, kaj ga premika in v čem se razlikuje od Aave.",
+  h1: "Kaj je health factor na Morpho in kako se izračuna?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Kaj je health factor posojila na Morpho in kako se izračuna?",
+  readingMinutes: 13,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Health factor (faktor zdravja) posojila na Morpho primerja vrednost tvojega zavarovanja, upoštevano do likvidacijskega
+  LTV trga (LLTV), s tem, kar dolguješ: količina zavarovanja × cena oraklja (vira cene) × LLTV ÷ dolg. Ko dolg preseže
+  to mejo, je health factor pod 1 in pozicijo je mogoče likvidirati. Pri 1,00 ali več je ni mogoče, razen dela posojila
+  na Blue, katerega lastnik je odobril pogodbo za predlikvidacijo (pre-liquidation), ali posojila na Midnight, pri
+  katerem po zapadlosti ostane dolg. Primer: 1 cbBTC po ceni 80.011,48 USDC na trgu USDC | cbBTC (86%) na Ethereumu ob
+  40.000 USDC dolga da 80.011,48 × 0,86 ÷ 40.000 = 1,72. Vsak trg Morpho ima svoje zavarovanje, svoj orakelj in svoj
+  LLTV, za vedno določene ob nastanku trga, zato ima vsako posojilo svoj health factor.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Številke in številke blokov, v katerih so bile odčitane: content/blog/snapshots/morpho-health-factor.md */}
+
+## Kaj je health factor posojila na Morpho?
+
+Health factor je število, ki ti pove, kako daleč je tvoja pozicija izposoje na Morpho od likvidacije. Največji dolg, ki ga smeš imeti, deli s tem, kar dolguješ zdaj:
+
+**Health factor = vrednost zavarovanja v žetonu posojila × LLTV ÷ dolg**
+
+- **Nad 1,00:** pozicije ni mogoče likvidirati, razen če si odobril pogodbo za predlikvidacijo ali gre za posojilo na Midnight po zapadlosti (oboje je opisano spodaj). Višje kot je število, bolj se lahko cene obrnejo proti tebi, preden se kaj zgodi.
+- **Pod 1,00:** tvoj dolg je večji, kot ga trg dovoljuje, in del dolga ali ves dolg je mogoče likvidirati.
+- **Brez dolga:** ni česa likvidirati, zato tudi ni health factorja, ki bi ga spremljal.
+
+Health factor 1,72 ne pomeni, da te od likvidacije loči 72 %. Pomeni, da bi dolg lahko zrasel na 1,72-kratnik svoje velikosti ali bi cena zavarovanja lahko padla za 1 − 1 ÷ 1,72 = 41,9 %, preden je meja dosežena.
+
+Health factor ni shranjen na verigi. Pogodba Morpho preverja le, ali je pozicija zdrava; aplikacije, API Morpho in Tokenping mejo izposoje delijo z dolgom, da ga prikažejo kot število.
+
+## Kako je zgrajen trg Morpho Blue?
+
+Morpho Blue, ki ga dokumentacija Morpho zdaj imenuje trgi s spremenljivo obrestno mero, je niz ločenih posojilnih trgov. Vsakega določa pet parametrov, izbranih ob nastanku trga:
+
+| Parameter                 | Kaj je                                                | Na primeru trga                   |
+| ------------------------- | ----------------------------------------------------- | --------------------------------- |
+| Žeton posojila            | Edini žeton, ki si ga lahko izposodiš                 | USDC                              |
+| Žeton zavarovanja         | Edini žeton, ki ga lahko položiš kot zavarovanje      | cbBTC                             |
+| Orakelj                   | Pogodba, ki ceno zavarovanja izrazi v žetonu posojila | Cenovni feed (price feed) BTC/USD |
+| Model obrestne mere (IRM) | Pogodba, ki določa obrestno mero za izposojo          | AdaptiveCurveIRM                  |
+| LLTV                      | Likvidacijski LTV (liquidation loan-to-value)         | 86 %                              |
+
+Aplikacija Morpho trge poimenuje po njih, najprej žeton posojila: „USDC | cbBTC (86%)“. Trg lahko ustvari kdorkoli, a le z LLTV in IRM, ki ju je omogočilo upravljanje (governance) Morpho. Ko trg nastane, nobenega od petih parametrov ni mogoče več spremeniti: pogodba nima funkcije za njihovo urejanje, upravljanje pa lahko nove LLTV omogoči, nobenega pa nikoli ne more onemogočiti.
+
+Ker ima trg eno zavarovanje in en žeton posojila, tvoje zavarovanje na enem trgu ne krije dolga na drugem. Dokumentacija Morpho to pove naravnost: zavarovanje pripada posameznemu trgu in ni navzkrižno maržirano (cross-margined). Dve posojili na dveh trgih imata dva health factorja.
+
+## Kako Morpho izračuna health factor?
+
+Morpho Blue zdravje preverja na enem samem mestu v pogodbi, v funkciji `_isHealthy`, in isto preverjanje varuje izposojo, dvig zavarovanja in likvidacijo:
+
+1. **Dolg:** tvoji deleži izposoje (borrow shares), pretvorjeni v žetone posojila, zaokroženo navzgor.
+2. **Vrednost zavarovanja:** količina zavarovanja × cena oraklja ÷ 10^36, zaokroženo navzdol.
+3. **Meja izposoje:** vrednost zavarovanja × LLTV, zaokroženo navzdol.
+4. **Zdrava** je pozicija, dokler je meja izposoje vsaj tolikšna kot dolg.
+
+Health factor je korak 3, deljen s korakom 1. Zaokroževanje je vedno v prid protokolu, zato ti pogodba morda dovoli izposoditi si eno enoto manj od točne meje. Pri natanko 1,00 pogodba pozicijo še šteje za zdravo; likvidirati jo je mogoče, ko je dolg večji od meje, kar je isto kot health factor pod 1.
+
+### Kaj pomeni lestvica 10^36 pri oraklju?
+
+Orakelj Morpho vrne ceno enega žetona zavarovanja v žetonih posojila, pomnoženo z 10^36 in prilagojeno decimalkam obeh žetonov. Da jo prebereš, jo pomnoži z 10^(decimalke zavarovanja − decimalke posojila) in deli z 10^36. Na primeru trga ima cbBTC 8 decimalk, USDC pa 6, zato je surova vrednost 800114843487200000000000000000000000000 × 10^2 ÷ 10^36 = 80.011,48 USDC za cbBTC.
+
+Orakelj je katerakoli pogodba, ki jo je izbral ustvarjalec trga. Komentarji v pogodbi Morpho pravijo, da je odgovornost uporabnika, da izbira trge z varnimi oraklji, dokumentacija pa opozarja, da lahko orakelj združuje več feedov ali se zanaša na druge podatke na verigi. Tvoj health factor je lahko zanesljiv le toliko kot ta orakelj in feedi, ki jih bere.
+
+## Računski primer: kolikšen je health factor za 1 cbBTC ob 40.000 USDC dolga?
+
+Največji navedeni trg Morpho na Ethereumu po izposojeni vrednosti je bil 26. oktobra 2026 USDC | cbBTC (86%), s približno 309,13 milijona izposojenih USDC ob 343,18 milijona položenih (blok Ethereum 26274955). Njegov orakelj je cbBTC ocenil na 80.011,48 USDC, samo na podlagi cenovnega feeda BTC/USD, zato trg šteje 1 cbBTC kot 1 BTC in 1 USDC kot 1 dolar.
+
+Vzemi 1 cbBTC zavarovanja in 40.000 USDC dolga:
+
+1. Vrednost zavarovanja: 1 × 80.011,48 = 80.011,48 USDC.
+2. Meja izposoje: 80.011,48 × 0,86 = 68.809,88 USDC.
+3. Health factor: 68.809,88 ÷ 40.000 = **1,72**.
+4. LTV: 40.000 ÷ 80.011,48 = 50,0 %, ob LLTV 86 %.
+5. Likvidacijska cena: 40.000 ÷ (1 × 0,86) = **46.511,63 USDC za cbBTC**, 41,9 % pod 80.011,48.
+
+Premikajo ga tudi obresti. Obrestna mera za izposojo na tem trgu je bila v tistem bloku 4,89 % na leto, kar z obrestovanjem obresti znese 5,01 %. Če bi obrestna mera in cena ostali enaki eno leto, bi dolg zrasel na približno 42.003 USDC, health factor pa bi zdrsnil na 1,64.
+
+### Kaj imajo resnični posojilojemalci na tem trgu?
+
+API Morpho je 26. oktobra 2026 na tem trgu navajal 437 pozicij izposoje. Med 435 pozicijami s health factorjem je bila mediana 1,96, četrtina jih je bila pod 1,58, desetina pod 1,35, najnižji pa je bil 1,05. Približno 3 % jih je bilo pod 1,2. Na celotnem trgu je 8.419,83 cbBTC zavarovalo 309,13 milijona USDC dolga, kar je skupni health factor približno 1,87.
+
+## Kako so povezani LTV, LLTV in health factor?
+
+LTV (razmerje med posojilom in vrednostjo) je tvoj dolg, deljen z vrednostjo zavarovanja. LLTV je fiksna zgornja meja trga zanj. Pri enem zavarovanju in stalnem dolgu je health factor njuno razmerje:
+
+**Health factor = LLTV ÷ LTV**
+
+Na Morpho Blue je LLTV edina meja. Ni ločene, nižje meje za novo izposojo, zato ti pogodba dovoli izposojo ali dvig zavarovanja, dokler health factor ne doseže 1,00. Dokumentacija Morpho za razvijalce aplikacije prosi, naj ohranijo rezervo, na primer tako, da izposoje ne dovolijo pod health factor 1,05, a rezerva je izbira, ne pravilo pogodbe. Kako daleč pod mejo ostaneš, določa tvojo rezervo, ne glede na LLTV:
+
+| Izposojeno, kot delež meje | Health factor | Padec cene zavarovanja do likvidacije |
+| -------------------------- | ------------- | ------------------------------------- |
+| 50 %                       | 2,00          | 50 %                                  |
+| 70 %                       | 1,43          | 30 %                                  |
+| 80 %                       | 1,25          | 20 %                                  |
+| 90 %                       | 1,11          | 10 %                                  |
+| 100 %                      | 1,00          | 0 %                                   |
+
+## Katere LLTV lahko uporablja trg Morpho?
+
+Morpho Blue na Ethereumu in na Base je 26. oktobra 2026 sprejemal devet LLTV s seznama, ki ga je odobrilo upravljanje Morpho: 0 %, 38,5 %, 62,5 %, 77 %, 86 %, 91,5 %, 94,5 %, 96,5 % in 98 % (vsak je bil odčitan kot omogočen v bloku Ethereum 26274950 in bloku Base 53102888). LLTV 0 ne dovoljuje nobene izposoje. LLTV na Blue mora biti pod 100 %.
+
+LLTV določa tudi likvidacijsko spodbudo, dodatno zavarovanje, ki ga prejme likvidator: 1 ÷ (1 − 0,3 × (1 − LLTV)), omejeno na 1,15. Pri LLTV 86 % je to 1,0438: likvidator, ki odplača 100 USDC tvojega dolga, prejme 104,38 USDC tvojega zavarovanja. Višji LLTV pomeni manjšo spodbudo. Dokumentacija Morpho spodbudo pri 86 % zaokroži na približno 5 %; formula v pogodbi da 4,38 %. Spodbuda pri vsakem omogočenem LLTV, kaj likvidacija vzame in kolikšen del posojila lahko gre naenkrat, je opisano v vodniku [kako deluje likvidacija na Morpho](/sl/blog/kako-deluje-likvidacija-na-morpho). Spodbudo plačaš ti, iz svojega zavarovanja; tvoja lastna rezerva je razdalja med tvojim health factorjem in 1,00.
+
+## Kaj premika health factor na Morpho?
+
+Tri stvari ga lahko premaknejo, medtem ko ti ne narediš ničesar:
+
+- **Cena zavarovanja, kot jo vidi orakelj.** V primeru s cbBTC se health factor premika s feedom BTC/USD in se spremeni le, ko se ta feed posodobi.
+- **Cena žetona posojila, če jo orakelj uporablja.** Orakelj s feedom za kotacijsko valuto (quote feed) se odziva tudi na žeton posojila. Orakelj trga cbBTC ga nima, zato depeg (izguba vezave na dolar) USDC tega health factorja ne bi premaknil. Prav tako ga ne bi premaknila razlika med cbBTC in BTC.
+- **Obresti.** Na Morpho Blue dolg raste, ko se obresti nabirajo, dokumentacija Morpho pa opozarja, da lahko pozicija sčasoma postane bolj tvegana zgolj zaradi obresti. AdaptiveCurveIRM cilja na 90-odstotno izkoriščenost in obrestno mero dviguje, ko je trg bolj zaseden, ter znižuje, ko je mirnejši, pri čemer obrestno mero pri 90-odstotni izkoriščenosti drži med 0,1 % in 200 % na leto. Pri polni izkoriščenosti je obrestna mera lahko do štirikrat višja od tiste pri ciljni izkoriščenosti, torej do 800 % na leto. Kako dvig obrestne mere vpliva na health factor, je za Aave prikazano v vodniku [kako delujejo obrestne mere na Aave](/sl/blog/aave-obrestne-mere#kako-skoki-obrestnih-mer-vplivajo-na-tvoj-health-factor); učinek na posojilo na Morpho je enak.
+
+Česar upravljanje Morpho ne more premakniti, je trg sam: LLTV, naslov oraklja in IRM trga so fiksni. Orakelj ceno še vedno bere iz feedov za njim, zato je zanesljiv le toliko kot oni. Upravljanje lahko trgu določi provizijo do 25 % obresti, a ta obresti le razdeli med posojilodajalce in prejemnika provizije; ne spremeni tega, kar dolgujejo posojilojemalci.
+
+Orakelj odloča, katere cene štejejo. Na trgu WETH | wstETH (96.5%) na Ethereumu orakelj wstETH vrednoti po Lidovem lastnem menjalnem tečaju, 1,24717 WETH za wstETH v bloku 26274979, in 1 stETH šteje kot 1 ETH. Dolarska cena ETH tega health factorja sploh ne premakne. 10 wstETH ob 11 WETH dolga tam da 12,4717 × 0,965 ÷ 11 = 1,094, za likvidacijo pa bi moral menjalni tečaj pasti na 1,1399, za 8,6 % niže. Ta health factor premikata le obresti in ta menjalni tečaj.
+
+## Kako izračunaš svojo likvidacijsko ceno na Morpho?
+
+Pri poziciji na Blue je likvidacijska cena tista cena oraklja, pri kateri je tvoj dolg enak tvoji meji izposoje:
+
+**Likvidacijska cena = dolg ÷ (količina zavarovanja × LLTV)**
+
+Izražena je v žetonih posojila za en žeton zavarovanja, ker jo tako vrednoti orakelj. Pri health factorju h mora cena zavarovanja pasti za 1 − 1 ÷ h, da jo doseže (glej tabelo zgoraj). Ko dolg raste z obrestmi, se likvidacijska cena počasi dviguje.
+
+Če si za trg odobril pogodbo za predlikvidacijo, je mogoče del tvoje pozicije zapreti prej, pri nižjem LTV od LLTV. Trg cbBTC jo ima, z LTV za predlikvidacijo 83,26 %: za 1 cbBTC ob 40.000 USDC dolga je health factor, merjen glede na to mejo, 1,67 namesto 1,72. Morpho to funkcijo opušča: njegova aplikacija je ne ponuja več, Morpho pa posojilojemalce, ki jo imajo, prosi, naj jo izklopijo. Kako deluje ter kako jo preveriš in prekličeš, opisuje vodnik [predlikvidacija na Morpho](/sl/blog/morpho-predlikvidacija).
+
+## Kako deluje health factor na Morpho Midnight?
+
+Morpho Midnight, trgi Morpho s fiksno obrestno mero, zdravje izračuna na enak način, s tremi razlikami: trg lahko sprejema več vrst zavarovanja, dolg s časom ne raste, zapadlost pa je trda meja.
+
+- **Več vrst zavarovanja, seštetih.** Trg Midnight ima en žeton posojila, datum zapadlosti in eno ali več vrst zavarovanja, vsako s svojim LLTV in orakljem. Pogodba sešteje vrednost zavarovanja × LLTV za vsako, ki si jo položil, in vsoto primerja s tvojim dolgom. Health factor je ta vsota ÷ dolg.
+- **Fiksen dolg.** Dolguješ nominalni znesek, en žeton posojila na enoto, ki zapade ob zapadlosti. Obresti so vračunane že ob izposoji: za vsako enoto, ki jo dolguješ, prejmeš manj kot en žeton posojila, zato med posli health factor na Midnight premikajo le cene zavarovanja.
+- **Zapadlost je trda meja.** Po zapadlosti je mogoče likvidirati ves še odprt dolg ne glede na health factor, v tem načinu po zapadlosti pa likvidatorjeva spodbuda v prvi uri zraste od nič do polne velikosti.
+
+Trg Midnight lahko omeji tudi, kdo sme likvidirati, z vrati (gate), določenimi ob nastanku trga; spodnji primer trga jih nima.
+
+Največji navedeni trg Midnight na Ethereumu je 26. oktobra 2026, s približno 23,9 milijona odprtih enot dolga v USDC, posojal USDC do 25. decembra 2026, proti USDC pri LLTV 98 % in cbBTC pri 86 %, z istim orakljem za cbBTC kot zgornji trg na Blue. Če položiš 0,5 cbBTC in 10.000 USDC ob 40.000 enotah dolga, je meja 34.404,94 + 9.800 = 44.204,94, kar je health factor 1,105. Zapadlost, podaljšanje (rollover) in likvidacijo po zapadlosti opisuje vodnik [Morpho Midnight: posojila s fiksno obrestno mero](/sl/blog/morpho-midnight-posojila-s-fiksno-obrestno-mero).
+
+## V čem se health factor na Morpho razlikuje od tistega na Aave?
+
+Formula ima na obeh enako obliko: zavarovanje, uteženo s pragom, deljeno z dolgom. Pravila okoli nje se razlikujejo, kot s strani Aave pojasnjuje [vodnik o health factorju na Aave](/sl/blog/aave-health-factor-razlozen#health-factor-ltv-in-prag-likvidacije-v-cem-je-razlika):
+
+|                         | Morpho Blue                                    | Aave V3                                                                                                                                                                        |
+| ----------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Enota                   | En trg: eno zavarovanje, en žeton posojila     | En trg (pool na enem omrežju): vse tvoje zavarovanje in dolg na njem                                                                                                           |
+| Kako so določene cene   | Lasten orakelj vsakega trga, v žetonu posojila | Orakelj Aave, v USD                                                                                                                                                            |
+| Meja izposoje           | Do LLTV, health factor 1,00                    | Nižji LTV, zato največja izposoja pri WETH pusti [približno 1,03](/sl/blog/aave-health-factor-razlozen#zakaj-ti-izposoja-do-maksimuma-pusti-health-factor-le-okoli-103) |
+| Korelirana sredstva     | Ločeni trgi z visokim LLTV                     | Kategorije [E-Mode](/sl/blog/aave-health-factor-razlozen#kako-e-mode-spremeni-health-factor)                                                                             |
+| Se prag lahko spremeni? | Ne, določen je ob nastanku trga                | Da, spremenita ga lahko upravljanje in Risk Stewards                                                                                                                           |
+
+Aave V4 nekaj od tega spremeni, z enim health factorjem na Spoke in enim faktorjem zavarovanja (collateral factor) na sredstvo; glej [kako health factor deluje na Aave V4](/sl/blog/aave-health-factor-razlozen#ali-je-health-factor-na-aave-v4-drugacen).
+
+Praktična razlika: na Aave težava z enim sredstvom vpliva na ves tvoj trg, na Morpho pa ostane znotraj enega trga. In na Morpho te nič v pogodbi ne ustavi, da si ne bi izposodil do roba, zato je ohranjanje rezerve tvoja naloga.
+
+## Kje lahko vidiš svoj health factor na Morpho?
+
+Center pomoči Morpho pravi, da aplikacija pri vsaki poziciji prikaže health factor in likvidacijsko ceno. API Morpho za pozicije na Blue vrne `healthFactor` in spremembo cene do likvidacije; za Midnight vrne pozicije in parametre trga, njegova dokumentacija pa integratorjem naroča, naj orakelj vsakega zavarovanja preberejo na verigi in mejo izračunajo sami.
+
+Tokenpingova [nadzorna plošča Morpho](/sl/morpho) prikaže pozicije izposoje denarnice na Blue in Midnight, s health factorji, izračunanimi iz podatkov na verigi z Morphovo lastno matematiko, nikoli prevzetimi iz API Morpho.
+
+## Kako izbereš rezervo in prag opozorila?
+
+Začni pri tem, kako daleč bi se cena lahko premaknila, preden lahko ukrepaš, nato dodaj prostor za obresti:
+
+- **Izberi premik, ki ga želiš preživeti.** Uporabi tabelo v razdelku o LTV zgoraj: padec cene, ki ga želiš pokriti, določa health factor.
+- **Poglej orakelj.** Orakelj BTC/USD se premika z BTC. Orakelj z menjalnim tečajem, kot je tisti na trgu wstETH, se premika veliko manj, a obrestna mera za izposojo in sam menjalni tečaj še vedno premikata tvoj health factor, visok LLTV pa pusti malo prostora za oboje.
+- **Meri glede na najbližjo mejo.** Če si odobril predlikvidacijo, lahko del tvojega posojila gre, preden health factor doseže 1,00.
+- **Na Midnight pazi na datum.** Obresti rezerve ne bodo načenjale, a dolg, ki ostane po zapadlosti, je mogoče likvidirati pri kateremkoli health factorju.
+- **Vedi, kako ga dvigneš.** Odplačaj del dolga ali dodaj zavarovanje na istem trgu: zavarovanje na drugem trgu Morpho ne šteje. Na Midnight lahko dodaš katerokoli zavarovanje, ki ga trg sprejema.
+
+Dokumentacija Morpho za razvijalce kot primer ravni za opozorilo navaja 1,1. Za razmislek o rezervah glej [kolikšno rezervo potrebuješ, da imaš čas ukrepati](/sl/blog/varen-aave-health-factor#koliko-rezerve-potrebujes-da-imas-cas-ukrepati), napisano za Aave, a z isto aritmetiko.
+
+## Kako lahko opozorila za health factor pomagajo na Morpho?
+
+Tokenping preverja pozicije na Morpho vsakih 5 minut na 14 omrežjih: Ethereum, Base, Arbitrum, OP Mainnet, Polygon, Unichain, World Chain, HyperEVM, Katana, Monad, Arc, Robinhood Chain, Stable in Tempo. Pokriva pozicije izposoje na trgih, navedenih v aplikaciji Morpho, tako na Morpho Blue kot na Morpho Midnight. Opozorila za Midnight pokrivajo trge, ki jih navaja API Morpho. 26. oktobra 2026 so bili ti na Ethereumu in Base; Tokenping pokriva tudi Arc in Robinhood Chain, ko bo Morpho tam navedel trge Midnight.
+
+- **Prag:** nastaviš ga med 1,02 in 10. Dokler je health factor pod njim, vsako preverjanje pošlje sporočilo na vsak kanal, ki si ga izbral: Signal, Telegram ali e-pošta.
+- **Predlikvidacija:** če si na trgu Blue odobril pogodbo za predlikvidacijo, opozorilo uporabi nižjega od dveh health factorjev: tistega, merjenega glede na LLTV, in tistega, merjenega glede na mejo predlikvidacije.
+- **Zapadlost:** posojilo na Midnight dobi tudi en opomnik v zadnjih 7 dneh in enega v zadnjih 24 urah, nato pa opozorilo ob vsakem preverjanju po zapadlosti, dokler dolg ostaja.
+
+Za ogled pozicij na [nadzorni plošči Morpho](/sl/morpho) ne plačaš ničesar; opozorila stanejo <AlertPrice />, enak paket kot opozorila za Aave. Opozorilo ti da čas za ukrepanje; likvidacije ne prepreči, ker se cena lahko premakne med dvema preverjanjema.
+
+## Viri
+
+- [Dokumentacija Morpho: Variable Rate Market (Morpho Blue)](https://docs.morpho.org/learn/concepts/blue): pet parametrov, imena trgov, LLTV, ki jih je odobrilo upravljanje, in IRM (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: Collateral, LTV and health (za razvijalce)](https://docs.morpho.org/developers/borrow/concepts/ltv): formula, lestvica oraklja, brez navzkrižnega maržiranja, prakse integracije (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: Liquidation](https://docs.morpho.org/learn/concepts/liquidation) in [center pomoči Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): likvidacijska spodbuda, kje aplikacija prikaže health factor (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: Interest rate model](https://docs.morpho.org/learn/concepts/irm) in [obrestne mere za integratorje](https://docs.morpho.org/developers/borrow/concepts/interest-rates): AdaptiveCurveIRM, nabiranje obresti (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: Get data (za razvijalce)](https://docs.morpho.org/developers/borrow/tutorials/get-data): koda za health factor in likvidacijsko ceno (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: What is Midnight? (Fixed Rate Markets)](https://docs.morpho.org/learn/concepts/midnight) in [Midnight: zavarovanje, zdravje in likvidacije](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: Governance organization](https://docs.morpho.org/learn/governance/organization), [naslovi pogodb](https://docs.morpho.org/developers/contracts/addresses) in [pravila za navajanje v vmesniku](https://docs.morpho.org/get-started/resources/interface-listing-policy) (dostopano 26. oktobra 2026)
+- [morpho-blue](https://github.com/morpho-org/morpho-blue): `Morpho.sol`, `ConstantsLib.sol`, `IOracle.sol` (dostopano 26. oktobra 2026)
+- [midnight](https://github.com/morpho-org/midnight): `Midnight.sol`, `ConstantsLib.sol` (dostopano 26. oktobra 2026)
+- [pre-liquidation](https://github.com/morpho-org/pre-liquidation) in [morpho-blue-irm](https://github.com/morpho-org/morpho-blue-irm) (dostopano 26. oktobra 2026)
+- [Dokumentacija API Morpho: Morpho Blue](https://docs.morpho.org/developers/api/morpho/) in [Morpho Midnight](https://docs.morpho.org/developers/api/morpho-midnight) (končna točka GraphQL api.morpho.org/graphql, končne točke REST za Midnight pod api.morpho.org/v0/midnight): razvrstitve trgov, pozicije in pogodbe za predlikvidacijo (dostopano 26. oktobra 2026)
+- Branja na verigi: [Morpho Blue](https://etherscan.io/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract), [orakelj USDC | cbBTC](https://etherscan.io/address/0xA6D6950c9F177F1De7f7757FB33539e3Ec60182a#readContract), [orakelj WETH | wstETH](https://etherscan.io/address/0xbD60A6770b27E084E8617335ddE769241B0e71D8#readContract) in [Morpho Midnight](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f#readContract) na Ethereumu v blokih od 26274950 do 26274984 ter [Morpho Blue na Base](https://basescan.org/address/0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb#readContract) v bloku 53102888 (dostopano 26. oktobra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._

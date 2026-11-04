@@ -1,0 +1,169 @@
+export const meta = {
+  slug: "morpho-predlikvidacija",
+  title: "Predlikvidacija na Morpho: kaj je in kako jo izklopiš",
+  description:
+    "Kako predlikvidacija na Morpho (Auto-deleverage) proda del posojila pred LLTV, zakaj jo Morpho ukinja ter kako jo preveriš in prekličeš.",
+  h1: "Kaj je predlikvidacija na Morpho in kako jo preveriš ali izklopiš?",
+  publishedAt: "2026-10-26",
+  primaryQuestion: "Kaj je predlikvidacija na Morpho in kako preverim, ali je vklopljena, ter jo izklopim?",
+  readingMinutes: 11,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Predlikvidacija (pre-liquidation) je pogodba za en trg Morpho Blue (s spremenljivo obrestno mero), ki jo moraš izrecno
+  vklopiti in ki komurkoli omogoča, da proda del tvojega zavarovanja za odplačilo dolga, preden tvoja pozicija doseže
+  likvidacijski LTV (LLTV) tega trga. Aplikacija Morpho je imela funkcijo Auto-deleverage, ki deluje tako. Morpho jo
+  zdaj ukinja: aplikacija ne sprejema novih pozicij, njen center za pomoč prosi uporabnike, ki jo imajo, naj jo
+  izklopijo, njen SDK pa je 22. septembra 2026 kodo za predlikvidacijo označil kot opuščeno (deprecated). Pogodbe še
+  vedno delujejo, zato če si funkcijo kdaj vklopil, jo preveri z `isAuthorized` na pogodbi Morpho Blue in jo prekliči z
+  gumbom za upravljanje v aplikaciji ali s `setAuthorization(contract, false)`.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Številke, številke blokov in viri: content/blog/snapshots/morpho-pre-liquidation.md */}
+
+## Kaj je predlikvidacija na Morpho?
+
+Predlikvidacija je druga, zgodnejša likvidacijska meja, ki jo posojilojemalec lahko doda enemu trgu Morpho Blue. Na običajnem trgu Blue je pozicijo mogoče likvidirati šele, ko njen health factor (faktor zdravja), izmerjen glede na likvidacijski LTV trga (LLTV), pade pod 1; [vodnik o health factorju na Morpho](/sl/blog/morpho-health-factor-razlozen) to številko razloži. Pogodba za predlikvidacijo postavi nižjo mejo, preLLTV. Med obema mejama lahko kdorkoli odplača del tvojega dolga, do omejitve, ki jo določa pogodba, in po korakih vzame zavarovanje v vrednosti tega dolga in bonusa.
+
+Od običajne likvidacije jo ločijo tri stvari:
+
+- **Vklopiš jo izrecno.** Velja šele, ko pogodbo pooblastiš na Morpho Blue. Brez tega se pogodba tvoje pozicije ne more dotakniti.
+- **Velja za en trg.** Vsaka pogodba je vezana na en trg Blue in en nespremenljiv nabor parametrov ter nima lastnika, skrbnika ali funkcije za nadgradnjo.
+- **Obstaja samo na Blue.** Morpho Midnight, trgi s fiksno obrestno mero iz [vodnika o Midnight](/sl/blog/morpho-midnight-posojila-s-fiksno-obrestno-mero), predlikvidacije nima.
+
+Morpho je tovarno za predlikvidacijo (pre-liquidation factory) napovedal 4. marca 2025 in kot primera uporabe navedel auto-deleverage in auto-close. V pogodbah, API-ju in SDK-ju se imenuje pre-liquidation. Aplikacija Morpho je imela funkcijo Auto-deleverage, ki jo njen center za pomoč opisuje enako: ko tvoje razmerje med posojilom in vrednostjo (LTV) preseže nastavljeni prag, se lahko del pozicije zapre, provizija pa se zaračuna samo za zaprti del.
+
+## Ali je predlikvidacija v aplikaciji Morpho še na voljo?
+
+V aplikaciji Morpho ni več mogoče nastaviti nove predlikvidacije. Stanje 26. oktobra 2026:
+
+| Kje                                  | Stanje                                                                                                                                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Aplikacija Morpho in center za pomoč | Članek pomoči ima zdaj naslov „Sunsetting Auto-deleverage“ (ukinjanje funkcije Auto-deleverage; zadnja posodobitev 13. maja 2026): funkcija ne sprejema novih pozicij, uporabniki, ki jo imajo, pa naj jo izklopijo |
+| Morpho SDK                           | Vsi izvozi za predlikvidacijo so bili 22. septembra 2026 označeni kot opuščeni (pull request 1132), odstranjeni bodo v naslednji glavni različici, naslednika ni                                                    |
+| Dokumentacija Morpho                 | Stran o predlikvidaciji je izginila; njen stari naslov zdaj vodi na splošno stran o likvidaciji                                                                                                                     |
+| Morpho API                           | Še vedno navaja 106 pogodb za predlikvidacijo na navedenih trgih na omrežjih Ethereum (50), Base (37), Arbitrum (8), Polygon (6), Katana (3) in Unichain (2)                                                        |
+| Pogodbe                              | Nespremenjene in delujejo: kdorkoli jih lahko še vedno pokliče za posojilojemalca, ki jih je pooblastil                                                                                                             |
+
+Zadnja vrstica je tista, ki šteje, če si funkcijo prej vklopil. Ukinitev funkcije v aplikaciji ne razveljavi pooblastila, shranjenega na verigi.
+
+## Kako deluje pogodba za predlikvidacijo?
+
+Pogodbo za predlikvidacijo ustvari Morphova PreLiquidationFactory, ki jo lahko uporablja vsak: kdorkoli lahko ustvari pogodbo za kateri koli trg Blue, vsaka kombinacija trga in nabora parametrov pa lahko obstaja le enkrat. Njeni nespremenljivi parametri so:
+
+| Parameter        | Kaj določa                                                                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| preLLTV          | Razmerje med posojilom in vrednostjo, nad katerim je predlikvidacija dovoljena. Mora biti pod LLTV trga                                           |
+| preLCF1, preLCF2 | Close factor (del dolga, ki ga je mogoče odplačati naenkrat): največji delež tvojega dolga, ki ga en klic lahko odplača, pri preLLTV in pri LLTV  |
+| preLIF1, preLIF2 | Faktor spodbude (incentive factor): z njim se pomnoži odplačani dolg, da dobimo vzeto zavarovanje, v istih dveh točkah                            |
+| Orakelj          | Vir cene, ki odloča, ali te je mogoče predlikvidirati, in po kateri ceni se vzame tvoje zavarovanje. Lahko je orakelj samega trga ali kakšen drug |
+
+Preden ukrepa, pogodba s ceno svojega oraklja preveri, da je tvoje razmerje med posojilom in vrednostjo nad preLLTV in še vedno pri LLTV ali pod njim. Nad LLTV se predlikvidacija ustavi in prevzame jo običajna likvidacija na Blue. Nato Morpho Blue preveri, ali je tvoja pozicija zdrava po oraklju samega trga; če ni, se celoten klic razveljavi (revert).
+
+Konstruktor postavlja omejitve parametrom. Close factor ne sme padati, ko tveganje raste, in le njegova prva vrednost je omejena na 100 %: pogodba, katere druga vrednost je nad 100 %, lahko enemu klicu dovoli, da odplača ves tvoj dolg, še preden je dosežen LLTV. Morphove privzete vrednosti so daleč pod tem. Faktor spodbude mora biti najmanj 1 (brez bonusa) in največ 1 ÷ LLTV (bonus približno 16 % na trgu z LLTV 86 %). Morphov repozitorij navaja, da ta zgornja meja skupaj s pravilom, da se predlikvidacija ustavi pri LLTV, preprečuje, da bi predlikvidacija pustila pozicijo manj zdravo kot prej.
+
+### Kako rasteta close factor in bonus med preLLTV in LLTV?
+
+Oba rasteta premočrtno z razmerjem med posojilom in vrednostjo. Pogodba izmeri, kako daleč si od preLLTV proti LLTV, kot delež od 0 do 1, in vsak faktor premakne za ta delež poti od njegove prve do druge vrednosti. Na polovici med obema mejama je close factor na polovici med preLCF1 in preLCF2.
+
+Iz kode sledita dve omejitvi. Close factor omejuje en klic, ne skupnega zneska: Morphov repozitorij sam opozarja, da lahko likvidator zapre majhen del, te pusti še vedno nad preLLTV in pokliče znova, tako da je skupaj zaprto lahko več od close factorja. Poleg tega je close factor delež tvojega dolga, ne tvojega zavarovanja; [vodnik o close factorju na Aave](/sl/blog/kako-deluje-likvidacija-na-aave#koliko-mojega-dolga-je-mogoce-likvidirati-naenkrat) obravnava isto zamisel na Aave.
+
+## Katere so privzete nastavitve predlikvidacije na Morpho?
+
+Morpho je v svojem SDK-ju hranil privzeti nabor parametrov za vsakega od osmih pogostih LLTV, in vseh 106 pogodb, ki jih navaja njegov API, uporablja te privzete vrednosti. API navaja samo pogodbe z znanimi privzetimi parametri, zato lahko pogodbe z drugačnimi nastavitvami obstajajo, ne da bi se tam pojavile. Šest LLTV, ki imajo navedene pogodbe:
+
+| LLTV trga | preLLTV | Close factor (od preLLTV do LLTV) | Bonus   | Predlikvidacija se začne pri health factorju trga | Navedene pogodbe |
+| --------- | ------- | --------------------------------- | ------- | ------------------------------------------------- | ---------------- |
+| 62,5 %    | 56,26 % | od 0,75 % do 27,95 %              | 12,68 % | 1,111                                             | 2                |
+| 77 %      | 72,74 % | od 0,37 % do 25,66 %              | 7,41 %  | 1,059                                             | 12               |
+| 86 %      | 83,26 % | od 0,20 % do 24,53 %              | 4,38 %  | 1,033                                             | 50               |
+| 91,5 %    | 89,79 % | od 0,11 % do 23,92 %              | 2,62 %  | 1,019                                             | 21               |
+| 94,5 %    | 93,37 % | od 0,07 % do 23,61 %              | 1,68 %  | 1,012                                             | 15               |
+| 96,5 %    | 95,78 % | od 0,04 % do 23,41 %              | 1,06 %  | 1,008                                             | 6                |
+
+V vsakem privzetem naboru je bonus na obeh koncih enak in je enak bonusu, ki ga na tem trgu plača običajna likvidacija na Blue. Privzete vrednosti ne naredijo prodaje cenejše na dolar, temveč vsako prodajo manjšo. Običajna likvidacija na Blue sploh nima close factorja, zato lahko likvidator naenkrat odplača ves dolg. [Kako deluje likvidacija na Morpho](/sl/blog/kako-deluje-likvidacija-na-morpho) obravnava to plat.
+
+## Resnična pogodba: USDC | cbBTC (86%) na Base
+
+Največji navedeni trg Blue po izposojenem znesku na omrežju Base, USDC | cbBTC (86%) (zavarovanje cbBTC, dolg v USDC, LLTV 86 %), ima eno pogodbo za predlikvidacijo, ki jo navaja Morphov API, na naslovu `0xa7272aFc21f9C321024ED93892a1abfeb621C374`. Prebrano z omrežja Base 26. oktobra 2026 in preverjeno z Morphovim API-jem:
+
+- PreLiquidationFactory na Base potrjuje, da je pogodbo ustvarila, pogodba pa kaže na ta trg.
+- preLLTV 83,26 %, close factor, ki raste od 0,20 % do 24,53 %, bonus 4,38 % na obeh koncih: privzete vrednosti za 86 %.
+- Njen orakelj je orakelj samega trga. Pri blokih Base 53102870 in 53102952 je cbBTC ocenil na 80.000,15 USDC; [kako deluje likvidacija na Morpho](/sl/blog/kako-deluje-likvidacija-na-morpho) uporablja isto ceno.
+- Na trgu je bilo izposojenih približno 1,61 milijarde USDC proti približno 40.051 cbBTC, v približno 43.000 pozicijah z izposojo.
+- V približno 28 urah blokov Base, prebranih pred blokom 53102692, ni bilo nobene predlikvidacije s to pogodbo.
+
+Na Ethereumu ima največji navedeni trg USDC | cbBTC (86%) pogodbo z enakimi parametri, na naslovu `0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A`, ki prav tako uporablja orakelj svojega trga.
+
+## Primer izračuna: koliko lahko vzame ena predlikvidacija?
+
+Vzemimo ponazoritveno pozicijo na tem trgu na Base: 1 cbBTC zavarovanja in 50.000 USDC dolga, pri 80.000,15 USDC za cbBTC. Njen health factor je 1,376 glede na LLTV 86 % in 1,332 glede na mejo predlikvidacije 83,26 %. Z istim orakljem je vrednost glede na mejo predlikvidacije vedno enaka vrednosti trga, pomnoženi z 0,968 (83,26 ÷ 86).
+
+Predlikvidacija se lahko začne, ko cbBTC pade pod 60.052,58 USDC, 24,9 % pod to ceno. Običajna likvidacija se začne pod 58.139,53 USDC, 27,3 % nižje. Med tema cenama je največja posamezna predlikvidacija videti tako:
+
+| LTV  | Cena cbBTC | Close factor | Odplačan dolg | Vzeto zavarovanje (vrednost v USDC) | Bonus | LTV po tem |
+| ---- | ---------- | ------------ | ------------- | ----------------------------------- | ----- | ---------- |
+| 84 % | 59.523,81  | 6,77 %       | 3.384         | 3.533                               | 148   | 83,26 %    |
+| 85 % | 58.823,53  | 15,65 %      | 7.825         | 8.168                               | 343   | 83,26 %    |
+| 86 % | 58.139,53  | 24,53 %      | 12.266        | 12.803                              | 538   | 83,23 %    |
+
+S privzetimi vrednostmi en klic polne velikosti vrne razmerje med posojilom in vrednostjo na približno preLLTV, kjer se pogodba ustavi. Za primerjavo običajna likvidacija na Blue pri 87 %: likvidator lahko odplača vseh 50.000 USDC in vzame za 52.192 USDC cbBTC, tebi pa ostane približno 5.279 USDC zavarovanja in nobenega posojila.
+
+## Zakaj so se posojilojemalci odločili za vklop in koliko jih je stalo?
+
+Razlog za vklop so bile manjše, postopne prodaje. Morphov članek pomoči opisuje Auto-deleverage kot zapiranje le dela pozicije, da se ji povrne zdravje, s provizijo samo na zaprti znesek. V zgornjem primeru je posojilojemalec, ki je funkcijo vklopil, pri vsakem koraku plačal od 148 do 538 USDC bonusa, medtem ko običajna likvidacija pri 87 %, ki odplača celotno posojilo, stane 2.192 USDC; več korakov ali običajna likvidacija za njimi lahko skupaj stane več.
+
+Stroški:
+
+- **Prodaja se začne prej.** Na trgu z LLTV 86 % se del tvoje pozicije lahko proda že pri health factorju trga približno 1,033, medtem ko je health factor, ki ga opisuje Morphov center za pomoč, izmerjen glede na LLTV, še nad 1.
+- **Koraki se lahko ponavljajo.** Close factor omejuje vsak klic, ne skupnega zneska, zato lahko več klicev sledi drug drugemu, dokler si nad preLLTV.
+- **Cena se lahko razlikuje.** Pogodba lahko uporablja drug orakelj kot trg. Vseh 106 pogodb, ki jih navaja Morphov API, uporablja orakelj svojega trga; pogodba, ki je ne navaja, morda ne.
+- **Nihče ni dolžan ukrepati.** Če noben likvidator ne pokliče pogodbe, se pred LLTV ne zgodi nič; ko ga prestopiš, si lahko likvidiran na običajen način.
+
+Ker se funkcija zdaj ukinja, Morpho posojilojemalce, ki jo še imajo, prosi, naj jo izklopijo, novi vklopi pa niso več mogoči.
+
+## Kako preveriš, ali si katero pooblastil?
+
+Pogodbo za predlikvidacijo si pooblastil, če `isAuthorized(your wallet, contract)` na Morpho Blue vrne true. Pooblastilo je shranjeno v samem Morpho Blue, ne v pogodbi za predlikvidacijo.
+
+1. **Poišči pogodbo za svoj trg.** Morphov API jo navaja med predlikvidacijami trga; Morphov center za pomoč kaže tudi na gumb za upravljanje na strani tvoje pozicije ali trga v aplikaciji.
+2. **Pokliči `isAuthorized` na pogodbi Morpho Blue na tem omrežju.** V raziskovalcu blokov (block explorer) odpri funkcije za branje pogodbe Blue ter kot prvi naslov vnesi svojo denarnico, kot drugega pa pogodbo za predlikvidacijo.
+3. **Preberi odgovor.** True pomeni, da te pogodba lahko predlikvidira; false pomeni, da te ne more.
+
+Za te korake potrebuješ naslov pogodbe, Morphov API pa navaja samo pogodbe s privzetimi nastavitvami. Pooblastilo je mogoče dati tudi s podpisom, ki ga pošlje nekdo drug, zato se morda ne pokaže na seznamu transakcij tvoje denarnice. Da vidiš vse naslove, ki si jih pooblastil, si v raziskovalcu blokov oglej dogodke SetAuthorization pogodbe Morpho Blue s svojo denarnico kot pooblastiteljem (authorizer). Zadnji dogodek za vsak naslov pokaže, ali je pooblastilo še vklopljeno, PreLiquidationFactory omrežja pa na `isPreLiquidation(address)` odgovori s true za pogodbe, ki jih je ustvarila.
+
+Tu je pomembna ena podrobnost. Pooblastilo na Blue ne vsebuje trga: naslov, ki ga pooblastiš, prestane preverjanja Blue za tvoje izposojanje, dvige in dvige zavarovanja na celotni tej pogodbi Blue. Nespremenljiva koda pogodbe za predlikvidacijo vedno le odplačuje dolg in dviguje zavarovanje na svojem trgu, drugi naslovi, ki si jih pooblastil, pa niso tako omejeni.
+
+## Kako izklopiš predlikvidacijo?
+
+Izklopiš jo tako, da pooblastilo nastaviš nazaj na false:
+
+- **V aplikaciji Morpho:** Morphov center za pomoč pravi, naj klikneš gumb za upravljanje pri poziciji na svoji nadzorni plošči ali na strani trga, kar odpre okno za odstranitev funkcije Auto-deleverage.
+- **Na pogodbi:** iz svoje denarnice pokliči `setAuthorization(pre-liquidation contract, false)` na Morpho Blue. Klic ne uspe, če je vrednost že false, zato neuspel klic lahko pomeni tudi, da ni bilo česa odstraniti.
+
+Po preklicu poskusi pogodbe, da bi dvignila tvoje zavarovanje, ne uspejo in velja le običajna likvidacija na Blue pod health factorjem 1. Stane te plin (gas) za eno transakcijo.
+
+## Kako Tokenping meri pozicijo s predlikvidacijo?
+
+Za posojilojemalca, ki je pooblastil pogodbo za predlikvidacijo na trgu Blue, Tokenping opozarja glede na nižjo od obeh meja: mejo LLTV in mejo predlikvidacije. To je pomembno, ker Morphov center za pomoč opisuje health factor, prikazan v njegovi aplikaciji, kot da doseže 1, ko razmerje med posojilom in vrednostjo preseže LLTV, kjer se začne tudi lastna likvidacija Blue. Na trgu z LLTV 86 % in privzeto pogodbo se prag opozorila 1,10 na meji predlikvidacije sproži pri health factorju trga približno 1,136, najnižji prag, 1,02, pa pri približno 1,054, kar je približno 2 % nad mejo, kjer se predlikvidacija lahko začne.
+
+Ko shraniš ali urediš opozorilo, si Tokenping zabeleži pogodbe za predlikvidacijo, ki jih Morphov API navaja za ta trg; vsako preverjanje nato prebere, ali si pooblastil katero od njih, in health factor izračuna z verige z Morphovo lastno matematiko, nikoli iz Morphovega API-ja. Pogodba za predlikvidacijo, ki je Morphov API ne navaja, se ne preverja, zato če si pooblastil takšno z nastavitvami po meri, opozorilo meri samo glede na mejo LLTV.
+
+Vse drugo deluje kot pri vsakem opozorilu za Morpho. Tokenping preverja vsakih 5 minut, na 14 omrežjih, in dokler je tvoj health factor pod tvojim pragom (karkoli od 1,02 do 10), vsako preverjanje pošlje sporočilo na vsak kanal, ki si ga izbral: Signal, Telegram ali e-pošto. Opozorila stanejo <AlertPrice />, enak paket kot opozorila za Aave, [ogled tvojih pozicij na Morpho](/sl/morpho) pa ne zahteva plačila. [Kako izbrati prag opozorila](/sl/blog/varen-aave-health-factor#kako-izberes-prag-opozorila-korak-za-korakom) korak za korakom razloži kompromis na Aave; enak razmislek velja tudi tukaj. Opozorilo ti da čas za ukrepanje, ne pa jamstva: cena se lahko premakne med dvema preverjanjema. Če predlikvidacije ne želiš več, jo prekliči, kot je prikazano zgoraj; tvoje opozorilo nato meri samo glede na mejo LLTV.
+
+## Viri
+
+- [morpho-org/pre-liquidation](https://github.com/morpho-org/pre-liquidation): README, [PreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidation.sol), [PreLiquidationFactory.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/PreLiquidationFactory.sol) in [IPreLiquidation.sol](https://github.com/morpho-org/pre-liquidation/blob/main/src/interfaces/IPreLiquidation.sol): parametri, omejitve, interpolacija in preverjanja (dostopano 26. oktobra 2026)
+- [Morpho.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol), [ConstantsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/ConstantsLib.sol) in [EventsLib.sol](https://github.com/morpho-org/morpho-blue/blob/main/src/libraries/EventsLib.sol): `isAuthorized`, `setAuthorization`, dogodek SetAuthorization, preverjanje zdravja in bonus običajne likvidacije (dostopano 26. oktobra 2026)
+- [Introducing pre-liquidations](https://morpho.org/blog/introducing-pre-liquidations-enhanced-loan-management-on-morpho) (Morpho, 4. marec 2025): auto-deleverage in auto-close kot primera uporabe ter običajna likvidacija, ko do predlikvidacije ne pride (dostopano 26. oktobra 2026)
+- [Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (center za pomoč Morpho, posodobljeno 13. maja 2026): brez novih pozicij, kako funkcijo izklopiti, kaj je počela (dostopano 26. oktobra 2026)
+- [Center za pomoč Morpho: Liquidation](https://help.morpho.org/en/articles/12166252-liquidation): aplikacija prikazuje health factor vsake pozicije, pozicijo pa je mogoče likvidirati pri 1 ali manj, ko njeno razmerje med posojilom in vrednostjo preseže LLTV (dostopano 26. oktobra 2026)
+- [Pull request 1132 v Morpho SDK](https://github.com/morpho-org/sdks/pull/1132) (združen 22. septembra 2026) in [preLiquidation.ts](https://github.com/morpho-org/sdks/blob/main/packages/blue-sdk/src/preLiquidation.ts): opustitev in privzeti parametri (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation): kam zdaj vodi stara stran o predlikvidaciji (dostopano 26. oktobra 2026)
+- [Morpho API](https://api.morpho.org/graphql): navedeni trgi, njihove pogodbe za predlikvidacijo in oraklji ter trgi USDC | cbBTC (86%) na Base in Ethereumu (dostopano 26. oktobra 2026)
+- Pogodbe za predlikvidacijo, prebrane na verigi: [Base](https://basescan.org/address/0xa7272aFc21f9C321024ED93892a1abfeb621C374) pri blokih od 53102692 do 53102952 in [Ethereum](https://etherscan.io/address/0xBFa7f9c1983aE40738Ea0F128e58aa704461AA3A) pri bloku 26274980, z njihovimi tovarnami, trgi in oraklji (dostopano 26. oktobra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._

@@ -1,0 +1,162 @@
+export const meta = {
+  slug: "depeg-stablecoina-na-aave",
+  title: "Kaj depeg stablecoina naredi tvojemu posojilu na Aave",
+  description:
+    "Kako depeg premakne health factor na Aave na vsaki strani posojila, kako omejeni viri Aave vrednotijo USDC, USDT in USDe ter kaj sta pokazali 2023 in 2025.",
+  h1: "Kaj se zgodi s tvojo pozicijo na Aave ob depegu stablecoina?",
+  publishedAt: "2026-10-28",
+  primaryQuestion: "Kaj se zgodi z mojim health factorjem na Aave ob depegu stablecoina?",
+  readingMinutes: 14,
+};
+
+<ShortAnswer>
+  Depeg (izguba vezave na dolar) stablecoina premakne tvoj health factor (faktor zdravja) na Aave prek cene oraklja
+  (vira cene), ne prek 1 $, ki ga imaš v mislih. Če je stablecoin tvoje zavarovanje, se vsak cent, za katerega pade pod
+  1 $, neposredno prenese v health factor, ker cenovni adapterji Aave za stablecoine ceno omejijo od zgoraj (pri 1,04 $
+  za USDC, USDT, DAI, USDS in PYUSD na Ethereum Core, prebrano 28. oktobra 2026) in nimajo spodnje meje. Če je
+  stablecoin tvoj dolg, padec tvoj health factor zviša, dvig pa ga zniža, a nikoli bolj, kot dopušča zgornja meja. USDe
+  je poseben primer: Aave ga od 8. marca 2025 vrednoti z virom USDT, zato njegova tržna cena tvojega health factorja
+  sploh ne doseže. Depeg lahko pozicijo med dvema preverjanjema opozorila premakne zelo daleč, zato ti opozorilo kupi
+  čas, ne zaščite.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Številke in bloki, v katerih so bile prebrane: content/blog/snapshots/stablecoin-depeg-aave.md */}
+
+## Kaj je depeg stablecoina in katero stran tvojega posojila prizadene?
+
+Stablecoin izgubi vezavo, ko njegova tržna cena zapusti 1 $, ki naj bi ga držal. Za posojilojemalca na Aave je to pomembno na dveh straneh, ki se obnašata različno:
+
+- **Stablecoin, ki si ga položil kot zavarovanje.** Njegova cena oraklja pomnoži vrednost tvojega zavarovanja, zato padec pod 1 $ skrči stran zavarovanja v health factorju. To je [vzrok 5, zakaj pade health factor](/sl/blog/zakaj-je-padel-aave-health-factor#vzrok-5-je-stablecoin-v-tvojem-zavarovanju-izgubil-vezavo-navzdol), in to je nevarna stran.
+- **Stablecoin, ki si si ga izposodil.** Njegova cena oraklja pomnoži vrednost tvojega dolga. Padec pod 1 $ zmanjša vrednost dolga in zviša tvoj health factor; dvig nad 1 $ poveča vrednost dolga in ga zniža.
+
+Health factor sam je v obeh primerih ista formula, razložena v vodniku [kaj je health factor na Aave](/sl/blog/aave-health-factor-razlozen):
+
+**HF = Σ(vrednost zavarovanja × prag likvidacije) ÷ skupna vrednost dolga**
+
+Obe vrednosti prideta iz oraklja Aave. Nič v formuli ne ve, da je sredstvo stablecoin: USDC pri 0,87 $ je preprosto sredstvo, vredno 0,87 $. Stablecoine loči to, kako jih Aave vrednoti, kar je tema tretjega razdelka. Spodnji primeri uporabljajo parametre Aave V3 Ethereum Core, prebrane 28. oktobra 2026 v bloku 26291704 (14:03:35 UTC): prag likvidacije (liquidation threshold) 78 % za USDC in USDT, 84 % za WETH.
+
+## Kaj depeg stablecoina, ki ga imaš kot zavarovanje, naredi health factorju?
+
+Padec cene oraklja stablecoina, ki si ga položil, zniža tvoj health factor sorazmerno s padcem, in nič ga ne ustavi. Vzemi 20.000 USDC položenih ob 10.000 USDT izposojenih, oba pri 1 $, da so računi okrogli (orakelj je v bloku 26291704 bral 0,99971803 $ za USDC in 0,99842395 $ za USDT):
+
+- Pri 1 $: 20.000 × 0,78 ÷ 10.000 = **1,56**.
+- USDC pri 0,95 $: 19.000 × 0,78 ÷ 10.000 = **1,48**.
+- USDC pri 0,87 $, dnu iz marca 2023: 17.400 × 0,78 ÷ 10.000 = **1,36**.
+- Likvidacija pri 1,00 bi zahtevala USDC pri 10.000 ÷ (20.000 × 0,78) = **0,64 $**, ob nespremenjenem USDT.
+
+Ta pozicija ima prostor, ker si je izposodila polovico tega, kar dopušča razmerje med posojilom in vrednostjo (LTV) 75 %. Isto zavarovanje, izposojeno do meje, 15.000 USDT, začne pri 15.600 ÷ 15.000 = **1,04**, USDC pri 0,95 $ pa ga spravi na 14.820 ÷ 15.000 = **0,99**, kar je mogoče likvidirati. 1,00 doseže pri ceni USDC približno **0,96 $**, kar je padec za manj kot 4 %. Pri 0,87 $ je 0,90. Loop (ponavljajoče se zadolževanje z vzvodom) s stablecoini je videti miren, dokler se orakelj ne premakne, nato pa je tvoja rezerva le razlika, ki si jo pustil med svojim LTV in pragom; [koliko varnosti ti da health factor](/sl/blog/varen-aave-health-factor) pokaže, kako jo izbrati.
+
+Ena podrobnost pomaga: šteje le razmerje med cenama oraklja. Če USDC in USDT oba bereta 0,95 $, je pozicija s 15.000 USDT spet pri 14.820 ÷ 14.250 = 1,04, nespremenjena. Marca 2023 je škodilo to, da je USDC padel, USDT pa ne.
+
+Vsak stablecoin, ki si ga položil, je izpostavljen na ta način, sorazmerno s svojim deležem v tvojem zavarovanju. Pri WETH in USDC, položenih v enakih dolarskih zneskih (pragova 84 % in 78 %), je USDC približno 48 % tvojega uteženega zavarovanja, zato padec USDC za 13 % odvzame približno 6 % tega zavarovanja.
+
+## Kaj naredi depeg stablecoina, ki si si ga izposodil?
+
+Če je stablecoin tvoj dolg, je učinek obrnjen in v eni smeri omejen. Vzemi 10 WETH položenih (prag 84 %) ob 12.000 USDT izposojenih, z ETH pri ponazoritvenih 2.300 $ (orakelj je v bloku 26291704 bral 2.335,08 $):
+
+- USDT pri 1 $: 23.000 × 0,84 ÷ 12.000 = **1,61**.
+- USDT pade na 0,95 $: dolg je vreden 11.400, torej **1,69**. Pri 0,87 $ je **1,85**. Depeg navzdol sredstva, ki si si ga izposodil, ti koristi.
+- USDT zraste na 1,02 $: dolg je vreden 12.240, torej **1,58**.
+- USDT zraste na 1,04 $ ali več: dolg je vreden največ 12.480, torej **1,55**. Zgornja meja drži ceno tam, ne glede na to, kaj pravi trg.
+
+Izposojen stablecoin te lahko z lastno ceno torej stane največ približno 4 % health factorja, kot zavarovanje pa ti lahko vzame toliko, kolikor pade. Ta asimetrija izhaja iz adapterja, ne iz parametrov tveganja Aave.
+
+<Callout tone="info">
+  Zato je tudi izposoja stablecoina ob volatilnem sredstvu, pozicija iz vodnika [short fiat valute z
+  Aave](/sl/blog/short-fiat-valute-z-aave), komaj izpostavljena depegom: stablecoin je dolg, njegov padec pa je za
+  posojilojemalca dobra novica.
+</Callout>
+
+## Kako Aave vrednoti stablecoine?
+
+Aave stablecoinov ne vrednoti pri 1 $. Vsaka rezerva ima vir cene, ki ga upravljanje (governance) nastavi v pogodbi AaveOracle, in za stablecoine je ta vir Chainlinkov vir v USD, ovit v adapter z zgornjo mejo cene (price cap adapter) iz repozitorija cenovnih virov Aave (repozitorija, ki se je včasih imenoval aave-capo; njegov README pravi, da je bil preimenovan v Aave Price Feeds). Adapter za stablecoine je `PriceCapAdapterStable`, njegov `latestAnswer` pa naredi tri stvari: prebere Chainlinkov vir, vrne zgornjo mejo, ki jo je določilo upravljanje, če je vir nad njo, sicer pa vrne ceno vira nespremenjeno (nepozitiven odgovor vira postane 0). Spodnje meje ni.
+
+Prebrano iz AaveOracle na Ethereum Core v bloku 26291704 (28. oktober 2026, 14:03:35 UTC), prek `getSourceOfAsset` in lastnih getterjev vsakega adapterja:
+
+| Sredstvo | Prag likvidacije     | Cena oraklja | Vir cene, kot se adapter opiše sam                   | Zgornja meja (`getPriceCap`) |
+| -------- | -------------------- | ------------ | ---------------------------------------------------- | ---------------------------- |
+| USDC     | 78 %                 | 0,99971803 $ | „Capped USDC / USD“ nad virom „USDC / USD“           | 1,04 $                       |
+| USDT     | 78 %                 | 0,99842395 $ | „Capped USDT/USD“ nad virom „USDT / USD“             | 1,04 $                       |
+| USDe     | 75 %                 | 0,99842395 $ | „Capped USDT/USD“ nad istim virom USDT               | 1,04 $ (glej spodaj)         |
+| DAI      | 77 %                 | 0,99923138 $ | „Capped DAI/USD“ nad virom „DAI / USD“               | 1,04 $                       |
+| USDS     | 78 %                 | 0,99972900 $ | „Capped USDS/USD“ nad virom „USDS / USD“             | 1,04 $                       |
+| PYUSD    | 78 %                 | 0,99988808 $ | „Capped pyUSD/USD“ nad virom „PYUSD / USD“           | 1,04 $                       |
+| GHO      | 0 % (ni zavarovanje) | 1,00000000 $ | Fiksen vir, ki ne odgovori na noben getter adapterja | brez, fiksno pri 1 $         |
+
+Vsak adapter je ta dan pri `isCapped()` vrnil false: noben vir ni bil nad svojo zgornjo mejo. Vrstica USDe potrebuje opombo: adapter, na katerega kaže USDe, je starejša namestitev iste pogodbe (ustvarjena 1. marca 2024), ki nima getterja `getPriceCap`, zato je bila zgornja meja prebrana iz njenega pomnilnika (storage), kjer je ista vrednost 104000000. sUSDe vrednoti drug adapter, „Capped sUSDe / USDT / USD“, ki menjalno razmerje med sUSDe in USDe pomnoži s ceno USDT in je bral 1,25333685 $.
+
+Kaj to pomeni za posojilojemalca:
+
+- **Nad 1 $ si kot posojilojemalec zaščiten, kot vlagatelj pa omejen.** Če USDC trguje pri 1,10 $, ga Aave vrednoti pri 1,04 $, zato dolg v USDC stane največ 4 % več, zavarovanje v USDC pa prinese največ 4 % več.
+- **Pod 1 $ ni nič omiljeno.** Adapter natanko prenese 0,95 $ ali 0,87 $. Tvoje zavarovanje je vredno toliko, kot pravi vir, in tvoj health factor mu sledi ob vsakem branju.
+- **Zgornja meja se lahko spremeni.** `setPriceCap` je na voljo skrbnikom tveganj (risk admins) in skrbnikom sklada (pool admins) Aave, meje ne more nastaviti pod trenutno ceno vira in ne more preseči 2 $. Zgornje meje v tabeli so bile na verigi 28. oktobra 2026, niso obljuba.
+- **Šteje vir, ne cena na borzi.** Chainlinkov vir združuje več trgovalnih mest, zato cena ene borze ni cena oraklja. Ali je to tolažba ali nevarnost, je odvisno od tega, na kateri strani posojila si; naslednja dva razdelka pokažeta oboje.
+
+Napake oraklja so ločena tema: adapter lahko sredstvo napačno ovrednoti brez kakršnega koli premika trga, kot se je zgodilo pri incidentu z wstETH marca 2026, in [vzrok 6, zakaj pade health factor](/sl/blog/zakaj-je-padel-aave-health-factor#vzrok-6-je-napaka-orakla-ali-menjalnega-tecaja-napacno-ovrednotila-tvoje-zavarovanje) pokrije ta primer.
+
+## Zakaj je USDe vrednoten z virom USDT in kaj je to pomenilo 10. oktobra 2025?
+
+Od 8. marca 2025 Aave V3 Ethereum Core vrednoti USDe s cenovnim virom USDT, zato lastna tržna cena USDe tam ne doseže nobenega health factorja. Odločitev izhaja iz predloga upravljanja „sUSDe and USDe Price Feed Update“, ki sta ga Chaos Labs in LlamaRisk objavila na forumu upravljanja Aave 2. januarja 2025. Predlog po lastnih besedah „suggests hardcoding the USDe price to match the USDT price in Aave's pricing feeds“ (predlaga, da se cena USDe v cenovnih virih Aave trdno nastavi na ceno USDT), z argumentom, da je večina Ethenovih varoval (hedges) denominiranih v USDT in da je vrednotenje sUSDe po sekundarnem trgu USDe pozicije, podprte s sUSDe, izpostavljalo kratkoročnim odstopanjem in nepotrebnim likvidacijam. Nit je naletela na nasprotovanje (en odgovor je spraševal, zakaj ne bi raje trdno nastavili 1,00 $; drugega je skrbelo, da so pozicije s sUSDe zdaj izpostavljene ceni USDT), Chaos Labs pa je ureditev 16. januarja 2025 označil za začasen ukrep. Glasovanje na Snapshotu je potekalo od 3. do 6. februarja 2025 in je bilo sprejeto. Na verigi je AIP 262 začel veljati v bloku 22002625 8. marca 2025 (14:01:47 UTC): vir AaveOracle za USDe se je preklopil z adapterja „Capped USDe / USD“ na adapter „Capped USDT/USD“, vir za sUSDe pa na „Capped sUSDe / USDT / USD“. Stari adapter USDe/USD še obstaja in še odgovarja: v bloku 26291704 je bral 0,99969500 $, medtem ko je Aave USDe vrednotil po ceni USDT 0,99842395 $.
+
+10. oktobra 2025 je bilo to med zlomom celotnega trga preizkušeno. Objava LlamaRisk na forumu z dne 24. oktobra 2025 opisuje „aggressive cryptocurrency market volatility events on centralized exchanges, most notably Binance“ (agresivne dogodke volatilnosti kriptotrga na centraliziranih borzah, predvsem na Binance), ki so sekundarno tržno ceno USDe premaknili „down to $0.65 at the lowest point“ (na najnižji točki do 0,65 $), in pravi, da Chainlinkov vir USDe/USD, ki črpa z več trgovalnih mest, „did not deviate significantly during this localized de-peg“ (med tem lokalnim depegom ni bistveno odstopal). Odgovor Chaos Labs z dne 2. novembra 2025 navede številko: Chainlinkova cena USDe/USD je „reached as low as $0.977“ (padla vse do 0,977 $). Aave sam ni videl nobene od teh cen. Po besedah LlamaRisk: „Aave avoided immediate issues from the de-peg on Binance by pricing USDe on par with USDT“ (Aave se je neposrednim težavam zaradi depega na Binance izognil, ker je USDe vrednotil enako kot USDT). Raziskovalna opomba LlamaRisk z dne 18. oktobra 2025 dodaja, da so vloge USDe na Aave v višini 1,03 milijarde $ med dogodkom „remained remarkably stable“ (ostale izjemno stabilne).
+
+Dve pošteni opozorili. Prvič, to je, kar pravijo viri, in nič več: noben javni post-mortem, ki ga je našel ta vodnik, ne šteje likvidacij, povezanih z USDe, na Aave tisti dan, zato ta vodnik ne trdi, da jih ni bilo. Drugič, ista objava LlamaRisk, ki viru USDT pripisuje, da se je Aave izognil težavam, pravi tudi, da pristop „transfers the solvency risk to the Aave protocol“ (prenese tveganje solventnosti na protokol Aave): če bi USDe kdaj izgubil kritje, bi ga orakelj Aave še naprej vrednotil kot USDT, dokler ne bi posredovalo upravljanje. LlamaRisk je v tej objavi predlagal orakelj za USDe z upravljanjem tveganj in samodejno zamrznitvijo; Chaos Labs je 2. novembra 2025 to odsvetoval, nit pa se je zaprla 7. decembra 2025 brez zabeleženega glasovanja. 28. oktobra 2026 je USDe na Ethereum Core še vedno kazal na adapter USDT, s pragom likvidacije 75 % in LTV 0.
+
+Za posojilojemalca to reže v obe smeri. Če imaš USDe kot zavarovanje na Ethereum Core, razprodaja USDe na borzi ne premakne tvojega health factorja, depeg USDT pa bi ga, prav tako glasovanje upravljanja, ki vir preklopi nazaj. Če si si izposodil USDe, ga je ob popustu na trgu ceneje kupiti nazaj, a Aave tvoj dolg še vedno vrednoti po ceni USDT.
+
+## Kaj se je zgodilo posojilojemalcem na Aave, ko je USDC marca 2023 padel?
+
+11. marca 2023, potem ko je Circle razkril, da je bil del rezerv USDC v banki Silicon Valley Bank, je USDC na trgu padel na dno okoli 88 centov ob približno 08:00 UTC, po post-mortemu, ki ga je Gauntlet napisal za Aave (17. marec 2023). Cena USDC na Aave je sledila Chainlinkovemu viru navzdol (adapterji z zgornjo mejo so prišli pozneje in padca ne bi spremenili), vsaka pozicija z USDC kot zavarovanjem pa je sorazmerno izgubila health factor, kar je natanko prvi primer zgoraj.
+
+Upravljanje in skupine za tveganja so ukrepali v nekaj urah, vse v niti na forumu, ki jo je Gauntlet odprl ob 08:13 UTC:
+
+- **09:19 UTC:** Gauntlet je priporočil začasno ustavitev vseh trgov Aave V2 in V3, da likvidacije ne bi udejanjile insolventnosti.
+- **10:19 UTC:** BGD Labs je opozoril, da lahko Aave Guardian takoj ukrepa le na Aave V3 Avalanche, kjer infrastruktura medverižnega upravljanja ni veljala, in predlagal, da se tam stablecoini zamrznejo in njihov LTV nastavi na 0.
+- **Približno 13:00 UTC:** Guardian je na Aave V3 Avalanche zamrznil USDC, USDT, DAI, FRAX in MAI in njihov LTV nastavil na 0, kar je BGD Labs potrdil v niti in dodal, da zamrznitev ni spremenila nobenega obstoječega health factorja. Račun Aave je to objavil ob 16:44 UTC.
+- **Brez ustavitve.** Gauntletov post-mortem pravi, da Guardian ustavitve ni izvedel, ker je tveganje tehtal proti strateškim in filozofskim posledicam; zamrznitev blokira nova polaganja in izposoje, likvidacije pa pusti teči.
+
+Rezultat po istem post-mortemu: približno 280.000 $ insolventnosti na Aave V3 Avalanche E-Mode in približno 20.000 $ na V3 Arbitrum med vikendom od 11. do 12. marca, skupaj približno 300.000 $, in nobenih udejanjenih izgub na Aave V2. Gauntlet je ocenil, da bi pri ceni USDC 80 centov samo insolventnosti na V2 lahko dosegle približno 1 milijon $. Nauk za posojilojemalca je, da je odziv protokola na depeg usmerjen v protokol: zamrznitev ustavi vstop novega tveganja, tvoje pozicije ne naredi varnejše, ustavitev, ki bi ustavila likvidacije, pa ni bila uporabljena.
+
+## Ali lahko depeg povzroči neizterljiv dolg in kdo ga plača?
+
+Da. Ko zavarovanje pada hitreje, kot ga likvidatorji lahko poravnajo, lahko pozicija ostane z zavarovanjem, vrednim manj kot njen dolg plus likvidacijski bonus, in primanjkljaj postane neizterljiv dolg (bad debt). 300.000 $ iz marca 2023 je bilo natanko to, večinoma v E-Mode za stablecoine, kjer so pozicije tekle blizu meje. Od Aave v3.3 se tak primanjkljaj zažge iz dolga posojilojemalca in zabeleži kot primanjkljaj (deficit) na sredstvu, Umbrella, zaščitni mehanizem Aave na podlagi stakinga, pa lahko za kritje zažge stakane aTokene (njena aktivacija se je začela na Ethereumu, po dokumentaciji Aave). Nič od tega ne pomaga posojilojemalcu, katerega zavarovanje je že izgubljeno; [ali lahko likvidacija pusti neizterljiv dolg](/sl/blog/kako-deluje-likvidacija-na-aave#ali-lahko-likvidacija-pusti-neizterljiv-dolg) ima mehaniko in izračunan primer.
+
+## Kako je to drugače na Morphu?
+
+Na Morphu ni vrednotenja stablecoinov na ravni protokola in ni zgornje meje. Vsak trg Morpho Blue ima svoj orakelj, ki ga izbere tisti, ki je trg ustvaril, in je določen za ves čas trajanja trga, dokumentacija Morpho pa pravi: „Once a market is deployed, its oracle address cannot be modified.“ (Ko je trg nameščen, naslova njegovega oraklja ni mogoče spremeniti.) Nekateri oraklji vrednotijo le zavarovanje in žeton posojila obravnavajo kot 1 $, zato depeg stablecoina posojila ne spremeni ničesar; drugi zanj vključujejo vir. Ali se depeg USDC dotakne tvoje pozicije na Morphu, je odvisno od te ene pogodbe, [kaj premakne health factor na Morphu](/sl/blog/morpho-health-factor-razlozen#kaj-premika-health-factor-na-morpho) pa pokaže, kako jo prebrati.
+
+## Kaj lahko narediš glede tveganja depega na Aave?
+
+Tveganje depega se večinoma odloči, ko izbereš pozicijo, zato so koristni ukrepi odločitve, ne odzivi:
+
+1. **Stablecoin postavi na stran dolga, kadar lahko.** Izposojeni stablecoini te lahko prizadenejo le z dvigom, zgornja meja pa to omeji na približno 4 %. Zavarovanje v stablecoinih nima spodnje meje. [Izbira dolga, ki se ujema z zavarovanjem](/sl/blog/kako-se-izogniti-likvidaciji-na-aave#korak-5-izberi-dolg-ki-ustreza-tvojemu-zavarovanju) gre skozi pare.
+2. **Če imaš zavarovanje v stablecoinih, rezervo meri v centih, ne v odstotkih.** Primer blizu meje zgoraj doseže 1,00 pri približno 0,96 $. Health factor 1,56, isto zavarovanje s tretjino manj dolga, potrebuje 0,64 $. Odloči se, pri kateri ceni si pripravljen biti likvidiran, nato pa posojilo prilagodi temu.
+3. **Spremljaj orakelj, ne borze.** Cena, ki te likvidira, je `AaveOracle.getAssetPrice(asset)`, ki je za stablecoine na Ethereum Core Chainlinkov vir pod zgornjo mejo, za USDe pa vir USDT. Cena na eni borzi ni niti potrebna niti zadostna.
+4. **Vedi, kaj lahko naredi upravljanje.** Zgornje meje in viri se spreminjajo z glasovanjem ali ukrepom skrbnika tveganj, zamrznitev med krizo pa likvidacij ne bo ustavila. Niti iz marca 2023 in oktobra 2025 zgoraj so zapis tega, kar je bilo narejeno.
+5. **Imej izhod pripravljen.** Odplačilo z depegiranim stablecoinom je poceni, če je ta stablecoin tvoj dolg, in drago, če ga moraš kupiti; [kako dvigniti health factor na Aave](/sl/blog/kako-se-izogniti-likvidaciji-na-aave) našteje poteze, ki delujejo med zamrznitvijo, saj zamrznjena rezerva še vedno dovoli odplačilo.
+
+## Ali te opozorilo lahko opozori na depeg?
+
+Opozorilo ti lahko pove, da je tvoj health factor prečkal mejo; depega ne more upočasniti. Tokenping tvoj health factor na Aave V3 in V4 preveri vsakih 5 minut na 22 omrežjih in ti pošlje sporočilo prek Signala, Telegrama ali e-pošte, dokler je pod pragom, ki si ga nastavil (od 1,1 do 10). Health factor bere iz pogodbe Pool, zato je cena za njim cena oraklja Aave, ista, po kateri so plačani likvidatorji: cena 0,65 $ za USDe na Binance ne doseže nobenega health factorja na Ethereum Core, Chainlinkovo branje USDC pri 0,88 $ pa doseže vsako pozicijo z zavarovanjem v USDC, in opozorilo sledi, če to health factor spravi pod tvoj prag.
+
+Pet minut je pri depegu dolgo. 11. marca 2023 je bil USDC do 08:00 UTC pri okoli 88 centih, pozicija blizu meje zgoraj pa doseže 1,00 pri približno 0,96 $, zato lahko preverjanje vsakih 5 minut takšno pozicijo najde že pod 1,00 ob prvem preverjanju, ki zazna padec. Opozorilo ti da počasni del: stablecoin, ki zdrsne na 0,98 $ in tam ostane, prag, ki ga zniža upravljanje, obresti, ki se nabirajo. Prag nastavi tam, kjer bi ti bilo še udobno ukrepati, in ne pozabi, da ukrepanje med depegom pomeni odplačilo ali dodajanje zavarovanja na omrežju, ki ga ob istem času uporabljajo vsi drugi. [Kako nastaviti opozorilo za health factor](/sl/blog/nastavitev-aave-health-factor-opozorila) opiše korake, opozorila stanejo <AlertPrice />, najprej pa lahko [preveriš svoj health factor na Aave V3](/sl/aave); ogled pozicij ne stane ničesar.
+
+## Viri
+
+- [Aave V3 Ethereum Core PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD#readContract): LTV in pragovi likvidacije za USDC, USDT, USDe, DAI, USDS, PYUSD, GHO in WETH v bloku 26291704 (dostopano 28. oktobra 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2#readContract): `getAssetPrice` in `getSourceOfAsset` za ista sredstva v bloku 26291704 ter dogodek `AssetSourceUpdated` za USDe in sUSDe v bloku 22002625 (dostopano 28. oktobra 2026)
+- [Adapter Capped USDC / USD](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B#readContract), [adapter Capped USDT/USD](https://etherscan.io/address/0x260326c220E469358846b187eE53328303Efe19C#readContract) in [adapter, na katerega kaže USDe](https://etherscan.io/address/0xC26D4a1c46d884cfF6dE9800B6aE7A8Cf48B4Ff8#code), „Aave: Ethena Correlated USDe Price Feed“, ustvarjen 1. marca 2024: opisi, zgornje meje, `isCapped` in osnovni viri v bloku 26291704 (dostopano 28. oktobra 2026)
+- [PriceCapAdapterStable.sol](https://github.com/aave-dao/aave-price-feeds/blob/main/src/contracts/PriceCapAdapterStable.sol) in [README Aave Price Feeds](https://github.com/aave-dao/aave-price-feeds): logika zgornje meje, nadzor dostopa do `setPriceCap`, preimenovanje iz Aave Capo (dostopano 28. oktobra 2026)
+- [Dokumentacija oraklja Aave](https://aave.com/docs/ecosystem/oracle.md): vire za vsako rezervo nastavi upravljanje (dostopano 28. oktobra 2026)
+- [ARFC: sUSDe and USDe Price Feed Update](https://governance.aave.com/t/arfc-susde-and-usde-price-feed-update/20495) (Chaos Labs in LlamaRisk, 2. januar 2025, Snapshot od 3. do 6. februarja 2025), [AIP 262](https://vote.onaave.com/proposal/?proposalId=262) in njegov [pull request s payloadom](https://github.com/aave-dao/aave-proposals-v3/pull/621), združen 3. marca 2025 (dostopano 28. oktobra 2026)
+- [Izvedba AIP 262 na Ethereumu](https://etherscan.io/tx/0xbb810541258db350d632e9a22ed7d7547509c67b2585dbc7a64a76b6ac8e42e0): viri za USDe in sUSDe posodobljeni v bloku 22002625, 8. marca 2025 ob 14:01:47 UTC (dostopano 28. oktobra 2026)
+- [ARFC: Ethena USDe Risk Oracle and Automated Freeze Guardian](https://governance.aave.com/t/arfc-ethena-usde-risk-oracle-and-automated-freeze-guardian/23303) (LlamaRisk, 24. oktober 2025; odgovor Chaos Labs 2. novembra 2025; zaprto 7. decembra 2025) (dostopano 28. oktobra 2026)
+- [When Pricing Breaks: A USDe Case](https://llamarisk.com/research/when-pricing-breaks-usde) (LlamaRisk, 18. oktober 2025, dostopano 28. oktobra 2026)
+- [ARC: Stablecoin Volatility Risk Parameter Recommendations](https://governance.aave.com/t/arc-stablecoin-volatility-risk-parameter-recomendations/12241) (Gauntlet, 11. marec 2023, s potrditvijo zamrznitve BGD Labs istega dne) in [objava Aave](https://x.com/aave/status/1634596115483086848) (11. marec 2023, 16:44 UTC) (dostopano 28. oktobra 2026)
+- [Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330) (Gauntlet, 17. marec 2023, dostopano 28. oktobra 2026)
+- [Funkcije Aave v3.3](https://github.com/aave-dao/aave-v3-origin/blob/main/docs/3.3/Aave-v3.3-features.md) in [dokumentacija Aave Umbrella](https://aave.com/docs/aave-v3/umbrella): primanjkljaj (deficit) in slashing (dostopano 28. oktobra 2026)
+- [Dokumentacija Morpho: Oracles](https://docs.morpho.org/learn/concepts/oracle): orakelj za vsak trg, ki ga izbere kurator, nespremenljiv (dostopano 28. oktobra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._

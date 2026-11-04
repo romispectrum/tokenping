@@ -1,0 +1,192 @@
+export const meta = {
+  slug: "morpho-midnight-posojila-s-fiksno-obrestno-mero",
+  title: "Posojila s fiksno mero na Morpho Midnight: kako delujejo",
+  description:
+    "Kako delujejo posojila s fiksno obrestno mero na Morpho Midnight: mera, dolg ob zapadlosti, zdravje pri več zavarovanjih, likvidacija neodplačanega dolga.",
+  h1: "Kako delujejo posojila s fiksno obrestno mero na Morpho Midnight in kaj se zgodi ob zapadlosti?",
+  publishedAt: "2026-10-26",
+  primaryQuestion:
+    "Kako deluje posojilo s fiksno obrestno mero na Morpho Midnight in kaj se zgodi, če ga do zapadlosti ne odplačam?",
+  readingMinutes: 12,
+  protocol: "morpho",
+};
+
+<ShortAnswer>
+  Morpho Midnight je Morphovo posojanje s fiksno obrestno mero in fiksnim rokom. Izposojaš si tako, da prodajaš enote
+  dolga pod nominalno vrednostjo: vsaka enota ti zdaj prinese malo manj kot en žeton posojila in je obljuba, da ob
+  zapadlosti (maturity) trga odplačaš natanko enega, zato je obrestna mera določena ob izposoji in tvoj dolg ne raste.
+  Pred zapadlostjo je tvojo pozicijo mogoče likvidirati samo, če tvoje zavarovanje, uteženo z likvidacijskim LTV (LLTV)
+  vsakega zavarovanja, ne pokrije več dolga, torej ko je health factor (faktor zdravja) pod 1. Ko zapadlost mine, je
+  mogoče vsak preostali dolg likvidirati ne glede na tvoj health factor, pri čemer likvidatorjev bonus v prvi uri raste.
+  Odplačaj pred zapadlostjo, nato sam dvigni svoje zavarovanje.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Številke in številke blokov, pri katerih so bile prebrane: content/blog/snapshots/morpho-midnight-fixed-rate-loans.md */}
+
+## Kaj je Morpho Midnight?
+
+Morpho Midnight je del Morpha, ki ponuja posojila s fiksno obrestno mero do fiksnega datuma, zapadlosti. Morphova dokumentacija ga imenuje „Fixed Rate Markets (Midnight)“ (trgi s fiksno obrestno mero), poleg Morpho Blue, Morphovih trgov s spremenljivo obrestno mero. Če Morphove matematike zdravja pozicij še ne poznaš, začni z [vodnikom o health factorju na Morpho](/sl/blog/morpho-health-factor-razlozen), na katerem gradi ta vodnik.
+
+Midnight je bil za javnost odprt 21. julija 2026 na omrežju Base, z enim parom (zavarovanje cbBTC, posojila v USDC) in nekaj zapadlostmi. V tem vodniku je trg Midnight poimenovan po tem paru: „trg cbBTC/USDC“ sprejema cbBTC kot zavarovanje in posoja USDC. Ista koda pogodbe zdaj teče na petih omrežjih:
+
+| Omrežje         | Pogodba Midnight ima kodo od | Trgi, ki jih navaja Morphov API (26. oktober 2026) |
+| --------------- | ---------------------------- | -------------------------------------------------- |
+| Base            | 6. julij 2026                | Da; 19 navedenih trgov ima odprta posojila         |
+| Ethereum        | 20. avgust 2026              | Da; 12 navedenih trgov ima odprta posojila         |
+| Arc             | 11. september 2026           | Nobenih (obstaja 13 trgov)                         |
+| Robinhood Chain | Datum ni na voljo            | Nobenih (obstaja 34 trgov)                         |
+| Tempo           | 3. oktober 2026              | Nobenih (API ne prikazuje nobenega trga)           |
+
+Trg Midnight lahko ustvari kdorkoli, zato obstoj trga na verigi pove malo. Trgi, ki jih prikazuje Morphova aplikacija, so tisti, ki jih navaja njen API, in 26. oktobra 2026 so bili vsi na Ethereumu in Base.
+
+Starejša Morphova objava je Midnight skupaj z Vaults V2 predstavila kot „Morpho V2“. Objava ob zagonu pravi, da Midnight ni niti druga različica Blue niti njegova zamenjava: oba delujeta drug ob drugem. Gre za ločeni pogodbi.
+
+## Kako je trg Midnight določen?
+
+Trg Midnight je določen ob ustvarjanju in se nikoli ne spremeni. Določajo ga:
+
+- **Žeton posojila**, na primer USDC.
+- **Eno ali več zavarovanj** (do 128), vsako s svojim LLTV (delež vrednosti zavarovanja, ki ga lahko dolguješ pred likvidacijo), svojim orakljem (virom cene) in svojim likvidacijskim kurzorjem (liquidation cursor), ki določa likvidatorjev bonus.
+- **Zapadlost**, datum in ura, ko zapadejo vsa posojila na trgu.
+- **Prag poplačila** (recovery threshold, rcfThreshold), ki odloča, kdaj je mogoče majhen znesek zavarovanja likvidirati v celoti (glej spodaj).
+- **Neobvezna vrata** (gates), ki lahko omejijo, kdo sme posojati, si izposojati ali likvidirati. Vrata te nikoli ne morejo ustaviti pri odplačilu ali izstopu. Noben od navedenih trgov na Ethereumu ali Base 26. oktobra 2026 ni imel vrat.
+
+En posojilojemalec lahko hkrati uporablja do 16 zavarovanj trga. Za sprejem novega zavarovanja ali premik zapadlosti mora nekdo ustvariti nov trg. Navedeni trgi s posojili na obeh omrežjih zapadejo zadnji petek v mesecu ob 15:00 UTC: 30. oktobra, 27. novembra in 25. decembra 2026 ter 26. marca 2027.
+
+## Kako je določena fiksna obrestna mera in koliko dolguješ ob zapadlosti?
+
+Obrestna mera izhaja iz cene, ne iz modela obrestne mere. Midnight dolg šteje v enotah, ena enota dolga pa je obljuba, da ob zapadlosti odplačaš en žeton posojila. Da si izposodiš, enote prodaš posojilodajalcem po ceni pod 1: pri ceni 0,99 zdaj za vsako enoto prejmeš 0,99 USDC in ob zapadlosti dolguješ 1 USDC na enoto. Obrestna mera za celotno obdobje je 1, deljeno s ceno, minus 1, Morphova dokumentacija pa jo pretvori v letno vrednost tako, da jo deli z deležem leta, ki je še ostal.
+
+Cene izhajajo iz ponudb, ki jih objavljajo posojilodajalci in posojilojemalci, zato lahko dva posojilojemalca na istem trgu plačujeta različni obrestni meri. 26. oktobra 2026 je Morphov API obrestne mere 117 posojilojemalcev na trgu cbBTC/USDC na Base z zapadlostjo 25. decembra 2026 uvrstil med 1,93 % in 6,84 % na leto.
+
+Koliko dolguješ, je preprosto: število enot, ki si jih prodal, v žetonih posojila, plačljivo ob zapadlosti. Med trajanjem posojila se ne prišteje nič. Pogodba Midnight spremeni dolg posojilojemalca samo, ko si izposodiš več, odplačaš, odkupiš enote ali si likvidiran; obresti na dolg ne nastajajo ne pred zapadlostjo ne po njej.
+
+Midnight ima dve proviziji, obe določeni za vsak trg posebej in obe enaki nič na obeh trgih v tem vodniku:
+
+- **Provizija za poravnavo** (settlement fee) pri vsakem poslu, ki jo plača tisti, ki sprejme ponudbo. Pogodba jo omeji glede na čas do zapadlosti, od 0,0014 % za en dan do 0,5 % za 360 dni.
+- **Stalna provizija** (continuous fee), ki jo nosijo samo posojilodajalci in je omejena na 1 % na leto.
+
+## Kako se izračuna health factor pri več zavarovanjih?
+
+Pogodba Midnight zdravje preveri z da ali ne: pozicija je zdrava, dokler je njen največji dolg vsaj tolikšen kot njen dolg. Največji dolg je vsota, po vseh zavarovanjih, ki jih uporabljaš, vrednosti vsakega v žetonu posojila po ceni njegovega oraklja, pomnožene z njegovim LLTV. Morphova dokumentacija preverjanje zapiše kot maxDebt ≥ debt; health factor je isto preverjanje, zapisano kot razmerje, največji dolg deljen z dolgom, in pod 1 je pozicijo mogoče likvidirati.
+
+Vzemimo največji navedeni trg na Ethereumu, ki posoja USDC proti dvema zavarovanjema z različnima LLTV: samemu USDC pri 98 % in cbBTC pri 86 %. Pri ceni cbBTC 80.011,48 USDC (cena njegovega oraklja 26. oktobra 2026) ima ponazoritvena pozicija iz [vodnika o health factorju na Morpho](/sl/blog/morpho-health-factor-razlozen), 0,5 cbBTC in 10.000 USDC zavarovanja proti 40.000 USDC dolga:
+
+| Zavarovanje | Vrednost (USDC) | LLTV | Šteje za (USDC) |
+| ----------- | --------------- | ---- | --------------- |
+| 0,5 cbBTC   | 40.005,74       | 86 % | 34.404,94       |
+| 10.000 USDC | 10.000,00       | 98 % | 9.800,00        |
+| Skupaj      | 50.005,74       |      | 44.204,94       |
+
+Njen health factor je 44.204,94 ÷ 40.000 = 1,105, pod 1 pa pade, če cbBTC pade pod približno 70.233 USDC, 12,2 % nižje, ob tem da zavarovanje v USDC ohrani vrednost. Zamisel je enaka kot pri [drugem zavarovanju na Aave](/sl/blog/aave-health-factor-razlozen#kaj-se-spremeni-z-drugim-sredstvom-v-zavarovanju): vsako sredstvo šteje po svoji stopnji.
+
+Zavarovanja lahko kadar koli dodajaš, odstranjuješ ali zamenjuješ, dokler te dvig pusti zdravega. Če orakelj katerega koli zavarovanja, ki ga uporabljaš, preneha odgovarjati, za tvojo pozicijo, dokler imaš dolg, ne delujejo preverjanja zdravja, izposoja, dvigi in likvidacije. Odplačilo še vedno deluje, in ko je tvoj dolg nič, lahko dvigneš brez kakršnega koli oraklja.
+
+## Kdaj je posojilo Midnight mogoče likvidirati?
+
+Posojilo Midnight je mogoče likvidirati na dva načina: kadar koli, ko ni zdravo, ali ko po zapadlosti ostane dolg, ne glede na njegovo zdravje. [Kako deluje likvidacija na Morpho](/sl/blog/kako-deluje-likvidacija-na-morpho) obravnava skupno mehaniko; tukaj je tisto, kar je značilno za Midnight.
+
+### Pred zapadlostjo
+
+Pred zapadlostjo šteje samo zdravje. Ko je health factor pod 1, lahko likvidator odplača del tvojega dolga in vzame zavarovanje v vrednosti tega zneska in bonusa. Bonus je določen za vsako zavarovanje posebej: 1 ÷ (1 − cursor × (1 − LLTV)). Za cbBTC pri LLTV 86 % in kurzorju 0,3 je to 1,0438, bonus 4,38 %; za USDC pri 98 % približno 0,6 %. Likvidator izbere, katero od tvojih zavarovanj vzame, Morphova dokumentacija pa opozarja, da bo izbral tisto, ki se mu najbolj splača.
+
+Koliko lahko gre naenkrat, je odvisno od velikosti. Običajno lahko likvidator odplača le toliko, kolikor je treba, da pozicija spet postane zdrava. Izjema: ko bi zavarovanje, ki ostane po takšni omejeni likvidaciji, odplačalo manj od rcfThreshold trga, je to zavarovanje mogoče vzeti v celoti. Prag je 3.000 USDC na trgu cbBTC/USDC na Base v spodnjem primeru izračuna in 300.000 USDC na zgornjem trgu na Ethereumu. Pri posojilu z enim zavarovanjem pod to velikostjo lahko gre celotna pozicija naenkrat.
+
+### Po zapadlosti
+
+Ko čas zapadlosti mine, je mogoče vsak preostali dolg likvidirati, tudi če je tvoj health factor 2 ali 10. Pot po zapadlosti v pogodbi preverja samo uro. Morphov razlog je, da posojilodajalci pričakujejo dvig ob zapadlosti, neodplačan posojilojemalec, zdrav ali ne, pa jim to preprečuje.
+
+Bonus na tej poti se ob zapadlosti začne pri nič in v 60 minutah enakomerno naraste do polnega bonusa. Če je tvoja pozicija po zapadlosti tudi nezdrava, lahko likvidator namesto tega uporabi pot na podlagi zdravja in takoj vzame polni bonus. Na poti po zapadlosti ni omejitve, koliko je mogoče odplačati, zato je ves dolg mogoče likvidirati naenkrat. Po zapadlosti ne moreš več dodajati dolga, lahko pa še vedno odplačuješ, odkupuješ enote in dvigaš zavarovanje.
+
+<Callout tone="warning">
+  V točni sekundi zapadlosti je zdrava pozicija še varna; sekundo pozneje ni več. Pozno odplačilo zdrave pozicije te
+  lahko stane do polnega likvidacijskega bonusa, približno 4,4 % dolga pri posojilu s cbBTC in LLTV 86 %.
+</Callout>
+
+Če likvidacija pusti dolg, ki ga zavarovanje ne more pokriti, se primanjkljaj odpiše in ga nosijo samo posojilodajalci tega trga.
+
+## Kako odplačaš predčasno, ob zapadlosti ali preneseš na poznejšo zapadlost?
+
+Iz posojila Midnight lahko izstopiš na tri načine, poleg tega pa obstaja še rezervna možnost, ki jo moraš vklopiti sam:
+
+- **Odplačaj neposredno.** Odplačilo stane natanko en žeton posojila na enoto, pred zapadlostjo, ob njej ali po njej. Vedno deluje in določa, koliko največ bi moral plačati za predčasen izstop. Predčasno odplačilo ti ne vrne nič obresti: plačaš celoten znesek, ki zapade ob zapadlosti, le prej.
+- **Odkupi enote pred zapadlostjo.** Namesto tega lahko enote kupiš iz prodajnih ponudb posojilodajalcev po ceni pod 1, kar izbriše toliko dolga za manj od nominalne vrednosti. To je odvisno od tega, ali nekdo ponuja enote v trenutku, ko želiš izstopiti.
+- **Prenesi na poznejšo zapadlost.** Morphova dokumentacija opisuje odplačilo ali odkup na enem trgu in izposojo na trgu s poznejšo zapadlostjo v eni sami transakciji, s povratnimi klici (callbacks). Morphova objava ob zagonu julija je samodejni prenos navedla kot poznejšo funkcijo; 26. oktobra 2026 dokumentacija prenos opisuje le kot nekaj, kar narediš sam, ali prek spodnje rezervne možnosti na Blue.
+- **Rezervna možnost na Blue.** Morpho je na vseh petih omrežjih uvedel pogodbo BlueFallbackRolling. Če jo vklopiš in pooblastiš tako na Midnight kot na Blue, lahko kdorkoli tvoj dolg in zavarovanje z Midnight prenese na trg Blue s spremenljivo obrestno mero, ki si ga izbral, od trenutka, ki si ga izbral. Nagrada klicatelja je delež dolga, ki ga določiš ti; raste med začetnim in končnim časom, ki ju določiš, lahko doseže ves dolg in se prišteje tvojemu novemu dolgu na Blue. Potrebno je natanko eno zavarovanje, ki se ujema z zavarovanjem trga Blue.
+
+## Kaj se zgodi s tvojim zavarovanjem, ko odplačaš?
+
+Tvoje zavarovanje ostane, kjer je, dokler ga ne dvigneš. Odplačilo ti ga ne vrne. Ko je tvoj dolg nič, preverjanje zdravja uspe, ne da bi vprašalo kateri koli orakelj, zato lahko dvigneš vse, in nobena vrata te ne morejo ustaviti. Premakneš ga lahko samo ti, račun, ki si ga pooblastil, ali likvidator pozicije, ki jo je mogoče likvidirati.
+
+Enako velja po likvidaciji: zavarovanje, ki ga likvidator ni vzel, ostane v tvoji poziciji, da ga dvigneš.
+
+## Primer izračuna: posojilo cbBTC/USDC z zapadlostjo 25. decembra 2026
+
+Ta trg, na paru, s katerim je Midnight začel, je bil ustvarjen 14. julija 2026, teden dni pred javnim zagonom, in je največji navedeni trg na Base. Prebrano na verigi 26. oktobra 2026 ob 06:06 UTC:
+
+| Polje               | Vrednost                                     |
+| ------------------- | -------------------------------------------- |
+| Žeton posojila      | USDC                                         |
+| Zavarovanje         | cbBTC, edino                                 |
+| LLTV                | 86 %                                         |
+| Likvidacijski bonus | 4,38 % (kurzor 0,3)                          |
+| Zapadlost           | 25. december 2026, 15:00 UTC, čez 60,4 dneva |
+| rcfThreshold        | 3.000 USDC                                   |
+| Vrata in provizije  | Brez                                         |
+| Dolg ob zapadlosti  | 1.530.235,58 USDC pri 117 posojilojemalcih   |
+| Cena cbBTC          | 80.097,33 USDC (orakelj trga)                |
+
+**Izposoja.** Najboljša cena, po kateri je posojilojemalec lahko prodal enote, je bila 0,9901297. Če pri tej ceni vzameš 10.000 USDC, 25. decembra 2026 dolguješ približno 10.099,69 USDC: 0,997 % za 60,4 dneva, približno 6,0 % na leto. Ta cena se spreminja iz minute v minuto.
+
+**Tipična pozicija.** Medianski posojilojemalec ob zapadlosti dolguje 37,08 USDC proti 0,00060018 cbBTC v vrednosti 48,07 USDC. Največji dolg te pozicije je 48,07 × 0,86 = 41,34 USDC, zato je njen health factor 41,34 ÷ 37,08 = 1,11. Do 1 pade, če cbBTC pade na približno 71.838 USDC, 10,3 % nižje.
+
+**Če cbBTC pred zapadlostjo pade tik pod 71.838 USDC.** Pozicija je daleč pod pragom 3.000 USDC, zato lahko likvidator odplača vseh 37,08 USDC in vzame za 38,71 USDC cbBTC. Od 43,12 USDC v cbBTC posojilojemalcu ostane približno 4,41 USDC za dvig.
+
+**Če posojilojemalec pozabi odplačati in cbBTC ostane pri 80.097 USDC.** Od 15:00:01 UTC 25. decembra lahko kdorkoli odplača 37,08 USDC in vzame cbBTC; likvidator lahko ukrepa v kateri koli sekundi po 15:00:00. Bonus raste s časom: po tridesetih minutah približno 2,2 %, po eni uri polnih 4,38 %. Likvidacija eno uro ali več po zapadlosti vzame za 38,71 USDC cbBTC, posojilojemalcu pa ga pusti za 9,37 USDC. Pravočasno odplačilo 37,08 USDC bi ohranilo vseh 48,07 USDC v cbBTC, neto 10,99 USDC, zato ta likvidacija posojilojemalca stane 1,63 USDC, polni bonus. Zgodnejša stane manj, a nič ne sili likvidatorja, da bi čakal.
+
+## Kako se Midnight primerja s posojilom s spremenljivo obrestno mero na Morpho Blue?
+
+|                                   | Morpho Blue                                                                         | Morpho Midnight                                                                                                                             |
+| --------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Obrestna mera                     | Se nenehno spreminja z modelom obrestne mere trga                                   | Fiksna ob izposoji                                                                                                                          |
+| Dolg                              | Raste z obrestmi                                                                    | Določeno število enot, ne raste                                                                                                             |
+| Končni datum                      | Ni ga                                                                               | Zapadlost                                                                                                                                   |
+| Zavarovanje na trg                | Eno                                                                                 | Eno ali več, vsako s svojim LLTV                                                                                                            |
+| Likvidacija je mogoča, ko         | Pozicija ni zdrava                                                                  | Pozicija ni zdrava ali po zapadlosti ostane kakršen koli dolg                                                                               |
+| Bonus                             | 1 ÷ (1 − 0,3 × (1 − LLTV)), največ 15 %                                             | 1 ÷ (1 − cursor × (1 − LLTV)), kurzor določen za vsako zavarovanje, brez zgornje meje 15 %                                                  |
+| Koliko naenkrat                   | Do celotnega dolga v enem klicu                                                     | Pred zapadlostjo toliko, da se zdravje povrne (celotno zavarovanje, če bi preostanek odplačal manj od rcfThreshold); po zapadlosti ves dolg |
+| Predlikvidacija (pre-liquidation) | Morpho jo ukinja, glej [Predlikvidacija na Morpho](/sl/blog/morpho-predlikvidacija) | Ni del Midnight                                                                                                                             |
+| Predčasen izstop                  | Odplačilo kadar koli                                                                | Odplačilo po nominalni vrednosti ali odkup enot, če obstajajo prodajalci                                                                    |
+
+Praktična razlika za tvoj health factor: na Blue lahko pade že samo zaradi obresti, tako kot na Aave ([kako skoki obrestnih mer vplivajo na tvoj health factor](/sl/blog/aave-obrestne-mere#kako-skoki-obrestnih-mer-vplivajo-na-tvoj-health-factor)). Na Midnight pade samo, ko padejo cene zavarovanja ali ko dvigneš zavarovanje ali si izposodiš več. V zameno Midnight doda datum, ki ga ne smeš zamuditi.
+
+## Kako ti lahko opozorila pomagajo pri posojilu Midnight?
+
+Opozorilo te lahko posvari pred obema tveganjema posojila Midnight: padajočim health factorjem in bližajočo se zapadlostjo. Tokenping preverja vsakih 5 minut. Njegova [nadzorna plošča za Morpho](/sl/morpho) prikaže pozicije izposoje denarnice na trgih, navedenih v Morphovi aplikaciji, na 14 omrežjih, na Blue in Midnight, ogled tvojih pozicij pa ne zahteva plačila. Opozorila za Midnight pokrivajo trge, ki jih navaja Morphov API. 26. oktobra 2026 so bili ti na Ethereumu in Base; Tokenping pokriva tudi Arc in Robinhood Chain, ko bo Morpho tam navedel trge Midnight. Do takrat opozorila za Midnight na teh dveh omrežjih niso mogoča.
+
+Za posojilo Midnight:
+
+- **Zdravje.** Tokenping tvoj health factor izračuna z verige z Morphovo lastno matematiko, nikoli iz Morphovega API-ja. Dokler je pod pragom, ki si ga nastavil (od 1,02 do 10), vsako preverjanje pošlje sporočilo na vsak kanal, ki si ga izbral: Signal, Telegram ali e-pošto.
+- **Zapadlost.** Prejmeš en opomnik v zadnjih 7 dneh pred zapadlostjo in enega v zadnjih 24 urah.
+- **Po zapadlosti.** Dokler dolg ostaja, vsako preverjanje pošlje opozorilo, ker je posojilo mogoče likvidirati ne glede na njegov health factor.
+
+Opozorila stanejo <AlertPrice />, enak paket kot opozorila za Aave. Opozorilo ti da čas za ukrepanje; likvidacije ne prepreči, cena pa se lahko premakne med dvema preverjanjema.
+
+## Viri
+
+- [Dokumentacija Morpho: Midnight concepts](https://docs.morpho.org/learn/concepts/midnight): enote, terjatve in dolg, predčasni izstopi, zavarovanje in zdravje (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: Midnight liquidations](https://docs.morpho.org/learn/concepts/midnight/liquidations): obe poti likvidacije, naraščanje bonusa po zapadlosti in zakaj je neodplačan dolg po zapadlosti mogoče likvidirati (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: offers](https://docs.morpho.org/learn/concepts/midnight/offers) in [gates](https://docs.morpho.org/learn/concepts/midnight/gates): prenos s povratnimi klici ter kaj vrata lahko blokirajo in česa ne (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: market mechanics](https://docs.morpho.org/developers/midnight/concepts/market-mechanics), [collateral, health and liquidations](https://docs.morpho.org/developers/midnight/concepts/collateral-health-liquidations) in [fees](https://docs.morpho.org/developers/midnight/concepts/fees) (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: exit a borrow early](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-early) in [exit a borrow at maturity](https://docs.morpho.org/developers/midnight/tutorials/exit-borrow-by-repaying-in-full-at-maturity) (dostopano 26. oktobra 2026)
+- [Dokumentacija Morpho: contract addresses](https://docs.morpho.org/developers/contracts/addresses): Midnight in BlueFallbackRolling na vsakem omrežju (dostopano 26. oktobra 2026)
+- [morpho-org/midnight](https://github.com/morpho-org/midnight): Midnight.sol (preverjanje zdravja, likvidacija, odplačilo, dvigi), ConstantsLib.sol (provizije, bonus, 60-minutno naraščanje, omejitve zavarovanj) in README periferije (dostopano 26. oktobra 2026)
+- [morpho-org/morpho-blue](https://github.com/morpho-org/morpho-blue): konstante likvidacije in bonusa na Blue (dostopano 26. oktobra 2026)
+- [Now live: Morpho Midnight and the new Markets App](https://morpho.org/blog/now-live-morpho-midnight) (21. julij 2026) in [Morpho Midnight: what to expect at launch](https://morpho.org/blog/morpho-midnight-what-to-expect-at-launch) (17. julij 2026) (dostopano 26. oktobra 2026)
+- [Morpho Fixed Rate Markets](https://morpho.org/blog/morpho-v2-liberating-the-potential-of-onchain-loans): starejša Morphova objava o Midnight in Vaults V2 (dostopano 26. oktobra 2026)
+- [Morpho Midnight API](https://api.morpho.org/v0/midnight/markets): navedeni trgi, knjiga naročil in pozicije posojilojemalcev (dostopano 26. oktobra 2026)
+- Pogodbe Midnight na [Base](https://basescan.org/address/0xAdedD8ab6dE832766Fedf0FaC4992E5C4D3EA18A) pri bloku 53102734 in [Ethereum](https://etherscan.io/address/0x471686c42792F93528B000beF54bC10E3aa2045f) pri bloku 26274992: definicije trgov, skupni zneski, provizije in cene orakljev (dostopano 26. oktobra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._

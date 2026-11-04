@@ -21,6 +21,7 @@ const RSS_DESCRIPTIONS: Localized<string> = {
   ro: "Ghiduri despre health factor pe Aave și Morpho, riscul de lichidare și alerte.",
   hu: "Útmutatók az Aave és a Morpho health factoráról, a likvidálási kockázatról és a riasztásokról.",
   hr: "Vodiči o health factoru na Aaveu i Morphu, riziku likvidacije i upozorenjima.",
+  sl: "Vodniki o health factorju na Aave in Morpho, tveganju likvidacije in opozorilih.",
 };
 
 const XML_ENTITIES: Record<string, string> = { "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" };

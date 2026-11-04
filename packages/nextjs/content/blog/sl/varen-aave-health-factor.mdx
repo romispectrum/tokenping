@@ -1,0 +1,157 @@
+export const meta = {
+  slug: "varen-aave-health-factor",
+  title: "Kakšen health factor je varen na Aave? Tabela rezerv",
+  description:
+    "Univerzalno varnega health factorja na Aave ni. Poglej, koliko lahko cene padejo pri 1,2, 1,5 ali 2,0 in kako izbereš rezervo za svoje zavarovanje.",
+  h1: "Kakšen health factor je varen na Aave?",
+  publishedAt: "2026-10-14",
+  updatedAt: "2026-10-20",
+  primaryQuestion: "Kateri health factor je na Aave varen?",
+  readingMinutes: 12,
+};
+
+<ShortAnswer>
+  Enega samega varnega ali „dobrega“ health factorja (faktorja zdravja) na Aave ni. Stran s pomočjo Aave pravi, da je
+  prava raven odvisna od tega, kako volatilna in kako povezana so tvoja sredstva. Število pa ti pove, koliko se lahko
+  cene premaknejo pred likvidacijo: z enim volatilnim sredstvom v zavarovanju in dolgom v stablecoinu health factor 1,2
+  doseže 1,00 po padcu cene za 16,7 %, 1,5 po padcu za 33,3 % in 2,0 po padcu za 50 %.
+</ShortAnswer>
+
+<ScopeNote />
+
+## Ali obstaja varen health factor na Aave?
+
+Ne. Stran s pomočjo Aave pravi, da „no universally 'safe' health factor“ (univerzalno „varnega“ health factorja ni), ker je prava raven odvisna od volatilnosti in povezanosti sredstev v poziciji ([Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations), dostopano 14. oktobra 2026). Dodaja, da so nižji health factorji lahko sprejemljivi pri povezanih sredstvih, kot so stablecoini ali sredstva, tesno vezana na ETH.
+
+Health factor (HF) je število, ki primerja tvoje zavarovanje s tvojim dolgom na enem trgu Aave: HF = Σ(vrednost zavarovanja × prag likvidacije) ÷ skupna vrednost dolga, v USD po cenah oraklja (vira cene) Aave. Prag likvidacije (liquidation threshold) je delež vrednosti zavarovanja, ki šteje v health factor, na primer 83 % za WETH na trgu Ethereum Core (prebrano na verigi v Ethereumovem bloku 26193284 14. oktobra 2026). Pod 1,00 lahko likvidator odplača del ali ves tvoj dolg, ti pa izgubiš zavarovanje v vrednosti odplačanega zneska in še likvidacijski bonus. Formulo in več primerov najdeš v vodniku [kaj je health factor na Aave](/sl/blog/aave-health-factor-razlozen).
+
+„Varen“ health factor se torej skrči na dve odločitvi, ki ju lahko sprejmeš samo ti: kako velik premik cene naj tvoja pozicija prenese in koliko časa potrebuješ, da ukrepaš, ko se cene začnejo premikati. Nadzorne plošče, tudi Tokenpingova, health factorje označujejo z besedami, kot sta „Varno“ ali „Tvegano“. Te oznake so le prikazni razponi; nobena raven ne zagotavlja, da pozicije ni mogoče likvidirati.
+
+## Koliko lahko cene padejo pred likvidacijo pri posameznem health factorju?
+
+Z enim volatilnim sredstvom v zavarovanju in dolgom v stablecoinu pozicija na Aave doseže health factor 1,00, ko cena zavarovanja pade za 1 − 1/HF. Pri HF 1,2 je to padec za 16,7 %, pri HF 1,5 za 33,3 %, pri HF 2,0 pa za 50 %.
+
+Izpeljava je kratka. Z enim sredstvom v zavarovanju je HF = (količina zavarovanja × cena × prag likvidacije) ÷ dolg. Če je dolg v stablecoinu, vrednem 1 $, in se nič drugega ne spremeni, se health factor premika natančno sorazmerno s ceno zavarovanja. Vrednost 1,00 doseže, ko cena pade na 1/HF današnje cene, zato je padec 1 − 1/HF.
+
+| Današnji health factor                                        | Padec cene, ki HF pripelje na 1,00 | Cena ETH pri HF 1,00, če je ETH danes 2.400 $ |
+| ------------------------------------------------------------- | ---------------------------------- | --------------------------------------------- |
+| 83 ÷ 80,5 ≈ 1,031 (WETH, izposojeno do meje na Ethereum Core) | 3,0 %                              | 2.327,71 $                                    |
+| 1,1                                                           | 9,1 %                              | 2.181,82 $                                    |
+| 1,2                                                           | 16,7 %                             | 2.000,00 $                                    |
+| 1,3                                                           | 23,1 %                             | 1.846,15 $                                    |
+| 1,5                                                           | 33,3 %                             | 1.600,00 $                                    |
+| 1,66 (spodnji primer z izračunom)                             | 39,8 %                             | 1.445,78 $                                    |
+| 2,0                                                           | 50,0 %                             | 1.200,00 $                                    |
+| 3,0                                                           | 66,7 %                             | 800,00 $                                      |
+
+Preizkus z izračunom na trgu Ethereum Core, s pragom likvidacije za WETH 83 %, prebranim na verigi 14. oktobra 2026 (Ethereumov blok 26193284): vzemi 10 WETH, položenih po ilustrativni ceni 2.400 $ (24.000 $), in 12.000 USDC izposojenega. HF = 24.000 × 0,83 ÷ 12.000 = 1,66. ETH doseže mejo likvidacije pri 12.000 ÷ (10 × 0,83) = 1.445,78 $, kar je 39,8 % pod 2.400 $, enako kot 1 − 1/1,66. ETH je tu zaokrožen na 2.400 $; orakelj Aave je istega dne v bloku 26193376 kazal 2.414,78 $.
+
+Tabela predpostavlja, da stablecoin ostane pri 1 $, da se ne nabirajo obresti in da se prag likvidacije ne spremeni. Z dvema sredstvoma v zavarovanju ali z dolgom v volatilnem sredstvu se računica spremeni; vodnik [izračunaj svojo likvidacijsko ceno na Aave](/sl/blog/aave-likvidacijska-cena) pokaže oba primera.
+
+## Zakaj je „varno“ število drugačno pri dolgu v stablecoinu, volatilnem dolgu in loopih v E-Mode?
+
+Isti health factor pomeni različne stvari za različne pozicije na Aave, ker meri oddaljenost od likvidacije v tisti ceni, ki poganja pozicijo, ta pa je odvisna od tega, kaj si položil in kaj si izposodil. Tole prenese health factor 1,5 v štirih pogostih postavitvah:
+
+| Vrsta pozicije                            | Primer                                                              | Cena, ki poganja health factor | Premik, ki HF z 1,5 spravi na 1,00 |
+| ----------------------------------------- | ------------------------------------------------------------------- | ------------------------------ | ---------------------------------- |
+| Volatilno zavarovanje, dolg v stablecoinu | Položen WETH, izposojen USDC                                        | Cena ETH v USD                 | ETH pade za 33,3 %                 |
+| Zavarovanje v stablecoinu, volatilen dolg | Položen USDC, izposojen WETH                                        | Cena ETH v USD                 | ETH zraste za 50 %                 |
+| Dve volatilni sredstvi                    | Položen WBTC, izposojen WETH                                        | Cena BTC, deljena s ceno ETH   | Razmerje BTC/ETH pade za 33,3 %    |
+| Loop med povezanimi sredstvi v E-Mode     | Položen wstETH, izposojen WETH v kategoriji E-Mode „ETH correlated“ | Razmerje wstETH/ETH iz oraklja | Razmerje pade za 33,3 %            |
+
+**Dolg v stablecoinu.** Pri dolgu v stablecoinu proti ETH ali BTC health factor skoraj ena proti ena sledi ceni zavarovanja. Stran dolga se malo premika: cenovni adapter Aave za USDC na Ethereumu ceno USDC omeji pri 1,04 $ (prebrano na verigi v Ethereumovem bloku 26193376 14. oktobra 2026), zato dolg v USDC nikoli ni ovrednoten več kot 4 % nad 1 $, cena USDC pod 1 $ pa zniža vrednost dolga, kar health factor zviša.
+
+**Volatilen dolg.** Ko si proti stablecoinom izposodiš volatilno sredstvo, health factor pade, ko izposojeno sredstvo zraste, izposojeno sredstvo pa lahko pred likvidacijo zraste za HF − 1 (50 % pri HF 1,5). Vzemi 10.000 USDC položenih (prag likvidacije 78 % na Ethereum Core v bloku 26193284, 14. oktober 2026) proti izposojenemu WETH v vrednosti 6.000 $: HF = 10.000 × 0,78 ÷ 6.000 = 1,30. Če je ETH začel pri 2.400 $, pozicija doseže HF 1,00, ko ETH zraste za 30 %, na 3.120 $. Premakne se lahko tudi zavarovanje v stablecoinu: 11. marca 2023 je USDC po post-mortemu Gauntlet padel na približno 0,88 $, in pri tej ceni bi bila ista pozicija pri 8.800 × 0,78 ÷ 6.000 = 1,144.
+
+**Loopi v E-Mode.** V kategoriji E-Mode „ETH correlated“ na Ethereum Core (LTV 93 %, prag likvidacije 95 % v Ethereumovem bloku 26193288, 14. oktober 2026; enako na Arbitrumu) health factor loopa (ponavljajočega se zadolževanja z vzvodom) wstETH proti WETH sledi razmerju wstETH/ETH, ki ga sporoča orakelj, ne dolarski ceni ETH. To zmanjša njegovo občutljivost na tržno ceno ETH, a loop, izposojen do meje, začne pri 95 ÷ 93 = 1,0215 in doseže 1,00 po padcu tega razmerja za 2,1 %. Marca 2026 je napačno nastavljen orakelj CAPO po post-mortemu Chaos Labs efektivno razmerje wstETH znižal za približno 2,85 % na trgih Ethereum Core in Prime, kar je bilo dovolj za likvidacijo tesno zadolženih loopov v E-Mode. Pri loopu je torej napaka oraklja ali menjalnega razmerja lahko pomembnejša od zloma trga, in če obrestna mera za izposojo WETH preseže to, kar prinaša zavarovanje, majhno rezervo načenjajo tudi obresti. Vodnik [zakaj tvoj health factor na Aave pada sam od sebe](/sl/blog/zakaj-je-padel-aave-health-factor) opisuje ta dogodek.
+
+## Kako hitro obresti in spremembe parametrov načenjajo tvojo rezervo?
+
+Pri obrestnih merah na trgu Aave Ethereum Core 14. oktobra 2026 (blok 26193378) bi obresti health factor pozicije z WETH v zavarovanju in dolgom v USDC znižale za približno 3 % na leto, če bi obrestne mere in cene ostale enake; znižanje praga likvidacije pa svoj del vzame v enem koraku. Obresti znižajo health factor, ko je obrestna mera za izposojo dolga višja od obrestne mere za polog zavarovanja, zato pozicija, katere zavarovanje prinaša več, kot stane dolg, na primer USDC, položen proti izposojenemu WETH, namesto tega počasi raste. Na Aave V3 nižji prag likvidacije takoj velja za vse odprte pozicije s tem zavarovanjem, pri enem sredstvu v zavarovanju pa health factor pade v istem razmerju. Vodnik [zakaj tvoj health factor na Aave pada sam od sebe](/sl/blog/zakaj-je-padel-aave-health-factor) oboje prikaže s številkami.
+
+## Koliko rezerve potrebuješ, da imaš čas ukrepati?
+
+Pozicija na Aave potrebuje dovolj rezerve, da se cene lahko premikajo naprej, medtem ko opozorilo pride do tebe in se tvoja transakcija za odplačilo ali polog potrdi. Fiksnega števila ni: odvisno je od tega, kako hitro se premika tvoje zavarovanje, kako hitro vidiš opozorilo in kako zanesljivo lahko spraviš transakcijo skozi.
+
+Seštejejo se tri zamude:
+
+1. **Zaznava.** Odpreš aplikacijo Aave ali pa storitev preverja po urniku. Tokenping preverja vsakih 5 minut, zato lahko hiter premik med dvema preverjanjema prečka 1,00.
+2. **Odziv.** Vidiš sporočilo in prideš do denarnice. Ponoči ali na potovanju lahko to traja ure.
+3. **Izvedba.** Transakcijo je treba podpisati, poslati in vključiti v blok, na napetem trgu pa stroški gasa rastejo, vmesniki ali končne točke RPC pa lahko odpovejo. Na forumu Polygon je maja 2021 posojilojemalec poskušal odplačati pri HF 1,01, naletel na ponavljajoče se napake in bil likvidiran, preden je odplačilo uspelo. Na forumu Aave je decembra 2024 drug poročal o več kot uri poskusov odplačila, ki so obtičali v čakanju, nato pa o likvidaciji. Nobena od teh razprav ne ugotovi vzroka.
+
+Pod 1,00 lahko likvidacija pride hitro: stran s pomočjo Aave opisuje likvidacije kot zelo konkurenčne, pogosto jih izvajajo prilagojeni boti, ki se odzivajo na spremembe cen oraklja in svoje transakcije oddajo z visoko prednostjo.
+
+Rezerva, ki jo potrebuješ, torej pokrije premik cene, ki se lahko zgodi med zaznavo, odzivom in izvedbo. Uporabno opozorilo je zato nad zadnjim health factorjem, pri katerem bi še lahko ukrepal, ne pa točno na njem.
+
+## Kako izbereš prag opozorila, korak za korakom?
+
+Prag lahko izbereš tako, da ne začneš pri health factorju, ampak pri ceni: izberi ceno zavarovanja, pri kateri bi želel začeti ukrepati, jo pretvori v health factor in opozorilo nastavi na to raven ali malo nad njo, ker preverjanja tečejo po urniku in se odplačilo lahko potrjuje nekaj časa. Primer uporablja pozicijo na Ethereum Core z 10 položenimi WETH in 12.000 izposojenimi USDC, pragom likvidacije za WETH 83 % (Ethereumov blok 26193284, 14. oktober 2026) in ETH po ilustrativni ceni 2.400 $. To da HF 1,66 in likvidacijsko ceno 1.445,78 $.
+
+1. **Izberi ceno, pri kateri bi želel začeti ukrepati.** Recimo, da bi želel odplačati ali dodati zavarovanje, če ETH doseže 2.000 $, kar je padec za 16,7 % od 2.400 $.
+2. **To ceno pretvori v health factor.** Z enim sredstvom v zavarovanju in dolgom v stablecoinu je HF pri novi ceni = današnji HF × nova cena ÷ današnja cena. Tu je to 1,66 × 2.000 ÷ 2.400 = 1,38. Pri več sredstvih v zavarovanju ali volatilnem dolgu vodnik [izračunaj svojo likvidacijsko ceno na Aave](/sl/blog/aave-likvidacijska-cena) pokaže, kako izračunaš health factor pri kateri koli ceni.
+3. **Preveri, koliko prostora ostane.** Pri ETH 2.000 $ lahko pozicija prenese še nadaljnji padec za 27,7 %, do 1.445,78 $. Če to ni dovolj prostora za čas, ki ga potrebuješ za ukrepanje, izberi višjo ceno in ponovi. Prag, ki pusti določen nadaljnji padec, je 1 ÷ (1 − padec):
+
+   | Nadaljnji padec cene, ki naj ostane, ko se opozorilo sproži | Prag opozorila |
+   | ----------------------------------------------------------- | -------------- |
+   | 10 %                                                        | 1,11           |
+   | 15 %                                                        | 1,18           |
+   | 20 %                                                        | 1,25           |
+   | 25 %                                                        | 1,33           |
+   | 33,3 %                                                      | 1,50           |
+
+   Te vrstice predpostavljajo eno volatilno sredstvo v zavarovanju in dolg v stablecoinu.
+
+4. **Prag ohrani kot health factor, ne kot ceno.** Pri enem sredstvu v zavarovanju z dolgom v stablecoinu prag ohrani svoj pomen tudi potem, ko odplačaš, dodaš zavarovanje ali si izposodiš več: 1,25 vedno pusti padec za 20 %, cena ETH, pri kateri se sproži, pa se premika skupaj s pozicijo.
+5. **Ponovi za vsak trg.** Na Aave V3 ima trg vsakega omrežja svoj health factor, zato pozicije na Arbitrumu in Base potrebujejo ločene prage.
+
+V Tokenpingu to število nastaviš za vsak trg Aave V3 ali Spoke Aave V4, od 1,1 do 10 (privzeto 1,5), in dokler je tvoj health factor pod njim, vsakih 5 minut prejmeš sporočilo na Signal, Telegram ali e-pošto. Pozicija, ki običajno teče pod 1,1, na primer loop v E-Mode blizu svoje meje, bi sprožila sporočilo ob vsakem preverjanju, zato Tokenping zanjo ni primeren. Najprej lahko [preveriš svoj health factor na Aave V3](/sl/aave); vodnik [kako nastaviš opozorilo za health factor](/sl/blog/nastavitev-aave-health-factor-opozorila) pokrije ostalo.
+
+## Kaj izposoja do maksimuma naredi s tvojo rezervo?
+
+Izposoja do maksimuma ne pusti skoraj nobene rezerve. Na Aave V3 pozicija na meji izposoje začne pri health factorju LT ÷ LTV, kar je za glavna sredstva na Ethereum Core in Arbitrumu le približno od 1,02 do 1,07. Za WETH na Ethereum Core je to 83 ÷ 80,5 = 1,031, zato padec ETH za 3,0 % doseže mejo likvidacije.
+
+Razkorak obstaja, ker Aave V3 za vsako zavarovanje uporablja dva odstotka. Razmerje med posojilom in vrednostjo (LTV) omejuje, koliko si lahko proti njemu izposodiš; prag likvidacije (LT), ki je vedno vsaj tako visok, določa, kdaj si lahko likvidiran. Nova izposoja je sprejeta le, dokler tvoj dolg ostaja znotraj zavarovanje × LTV. Na meji je dolg = zavarovanje × LTV, zato je HF = zavarovanje × LT ÷ (zavarovanje × LTV) = LT ÷ LTV.
+
+| Trg                                    | Zavarovanje                     | LTV    | Prag likvidacije | HF na meji izposoje (LT ÷ LTV) | Premik, ki HF spravi na 1,00              |
+| -------------------------------------- | ------------------------------- | ------ | ---------------- | ------------------------------ | ----------------------------------------- |
+| Ethereum Core                          | WETH                            | 80,5 % | 83 %             | 1,031                          | ETH pade za 3,0 % (dolg v stablecoinu)    |
+| Ethereum Core                          | WBTC                            | 73 %   | 78 %             | 1,068                          | BTC pade za 6,4 % (dolg v stablecoinu)    |
+| Ethereum Core                          | USDC                            | 75 %   | 78 %             | 1,040                          | Izposojeno sredstvo zraste za 4,0 %       |
+| Arbitrum                               | WETH                            | 80 %   | 84 %             | 1,050                          | ETH pade za 4,8 % (dolg v stablecoinu)    |
+| Arbitrum                               | WBTC                            | 73 %   | 78 %             | 1,068                          | BTC pade za 6,4 % (dolg v stablecoinu)    |
+| Arbitrum                               | USDC                            | 75 %   | 78 %             | 1,040                          | Izposojeno sredstvo zraste za 4,0 %       |
+| Ethereum Core, E-Mode „ETH correlated“ | wstETH ali cbETH, izposoja WETH | 93 %   | 95 %             | 1,0215                         | Razmerje zavarovanja do ETH pade za 2,1 % |
+
+Vrstice sredstev so bile prebrane na verigi 14. oktobra 2026 iz PoolDataProviderja vsakega trga v Ethereumovem bloku 26193284 in Arbitrumovem bloku 514855406 in so bile nespremenjene ob ponovnem branju v Ethereumovem bloku 26193988 in Arbitrumovem bloku 514885451. Vrstica E-Mode je iz Poola Ethereum Core v blokih 26193288 in 26193990; Arbitrumova kategorija „ETH correlated“, prebrana iz njegovega Poola v Arbitrumovih blokih 514855561 in 514885562, je imela enake vrednosti. Governance lahko katero koli od njih kadar koli spremeni.
+
+V dolarjih: 10 WETH po ilustrativni ceni 2.400 $ na Ethereum Core podpira največ 24.000 × 0,805 = 19.320 $ dolga v USDC. Izposoja vsega tega da HF = 19.920 ÷ 19.320 = 1,031 in likvidacijsko ceno 19.320 ÷ (10 × 0,83) = 2.327,71 $, le 3,0 % pod začetno, pri obrestnih merah 14. oktobra 2026 pa obresti nato health factor potiskajo navzdol, tudi če ETH ostane na mestu. Pri več sredstvih v zavarovanju je HF na meji uteženi prag likvidacije, deljen z uteženim LTV, navadno le nekaj odstotkov nad 1.
+
+Merilniki „porabljene meje izposoje“ (borrow limit used) v aplikacijah kažejo dolg ÷ (zavarovanje × LTV), kar ni health factor. Pozicija z WETH na Ethereum Core pri 100 % meje izposoje ima še vedno HF približno 1,031, ne 1,00.
+
+<Callout tone="info">
+  Aave V4 vsakemu zavarovanju da en faktor zavarovanja (collateral factor) namesto ločenega LTV in praga likvidacije,
+  zato je razkorak LT ÷ LTV v tej tabeli pravilo V3. Na Aave V3 Tokenping spremlja vsak trg na 21 omrežjih, vključno s
+  trgi Core, Prime, EtherFi in Horizon na Ethereumu. Na Aave V4 spremlja vsak Spoke na Ethereumu, Avalanche, Arc in
+  Base, vsakega kot samostojen trg.
+</Callout>
+
+## Viri
+
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations): ni univerzalno varnega health factorja; konkurenčne likvidacije (dostopano 14. oktobra 2026)
+- [GenericLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/GenericLogic.sol): formula za health factor (dostopano 14. oktobra 2026)
+- [ValidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol): izposoje, omejene z LTV; likvidacija pod HF 1,00 (dostopano 14. oktobra 2026)
+- [LiquidationLogic.sol, aave-v3-origin](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/LiquidationLogic.sol): delno ali celotno odplačilo dolga; zaseženo zavarovanje z likvidacijskim bonusom (dostopano 14. oktobra 2026)
+- [PoolDataProvider, Ethereum Core](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD): LTV in prag likvidacije v blokih 26193284 in 26193988; obrestne mere v bloku 26193378 (dostopano 14. oktobra 2026)
+- [Pool, Ethereum Core](https://etherscan.io/address/0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2): kategorija E-Mode „ETH correlated“ v blokih 26193288 in 26193990 (dostopano 14. oktobra 2026)
+- [AaveOracle, Ethereum Core](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): cena ETH 2.414,78 $ v bloku 26193376, in njegov [cenovni adapter za USDC](https://etherscan.io/address/0x3f73F03aa83B2A48ed27E964eD0fDb590332095B): zgornja meja cene 1,04 $ v bloku 26193376 (dostopano 14. oktobra 2026)
+- [PriceCapAdapterStable, aave-dao/aave-price-feeds](https://github.com/aave-dao/aave-price-feeds): kako deluje zgornja meja za USDC: cene nad mejo se ne upoštevajo, cene pod 1 $ gredo skozi (dostopano 14. oktobra 2026)
+- [PoolDataProvider, Arbitrum](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV in prag likvidacije v Arbitrumovih blokih 514855406 in 514885451 (dostopano 14. oktobra 2026)
+- [Pool, Arbitrum](https://arbiscan.io/address/0x794a61358D6845594F94dc1DB02A252b5b4814aD): kategorija E-Mode „ETH correlated“, id 2, v Arbitrumovih blokih 514855561 in 514885562 (dostopano 14. oktobra 2026)
+- [Pregled Aave V4, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/docs/overview.md): Dynamic Risk Configuration: faktor zavarovanja kot parameter zavarovanja v V4; v V3 znižanje praga likvidacije vpliva na vse odprte pozicije (dostopano 14. oktobra 2026)
+- [Spoke.sol, aave/aave-v4](https://github.com/aave/aave-v4/blob/main/src/spoke/Spoke.sol): health factor v V4, utežen s faktorji zavarovanja (dostopano 14. oktobra 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330): najnižja cena USDC približno 0,88 $, 11. marec 2023 (dostopano 14. oktobra 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269): dogodek s CAPO marca 2026 (dostopano 14. oktobra 2026)
+- [Forum Polygon: Liquidation on polygon AAVE, JSON ERROR](https://forum.polygon.technology/t/liquidation-on-polygon-aave-json-error/8067): maj 2021 (dostopano 14. oktobra 2026)
+- [Forum Aave: Repeatedly Failed Repayment Attempts Leading to Liquidation](https://governance.aave.com/t/repeatedly-failed-repayment-attempts-leading-to-liquidation/20379): december 2024 (dostopano 14. oktobra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._

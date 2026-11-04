@@ -1,0 +1,177 @@
+export const meta = {
+  slug: "posojila-s-kripto-zavarovanjem",
+  title: "Posojila s kripto zavarovanjem: kako delujejo in zakaj",
+  description:
+    "Kako korak za korakom deluje prekomerno zavarovano kripto posojilo na Aave, kako se razlikuje od banke, za kaj se uporablja in kakšna so tveganja.",
+  h1: "Kako delujejo posojila s kripto zavarovanjem in zakaj jih ljudje najemajo?",
+  publishedAt: "2026-10-19",
+  primaryQuestion: "Kako deluje posojilo s kripto zavarovanjem in zakaj ga ljudje uporabljajo?",
+  readingMinutes: 13,
+};
+
+<ShortAnswer>
+  Posojilo s kripto zavarovanjem ti omogoča, da si izposodiš, običajno stablecoin, kot je USDC, proti kriptu, ki ga
+  položiš kot zavarovanje, brez prodaje. Na Aave je posojilo prekomerno zavarovano: 19. oktobra 2026 si je bilo na trgu
+  Ethereum Core mogoče izposoditi do 73 % vrednosti WBTC ali 80,5 % vrednosti WETH. Protokol preverja le zavarovanje,
+  datuma odplačila ni, obrestna mera pa je spremenljiva. Če vrednost zavarovanja pade toliko, da tvoj health factor
+  (faktor zdravja) pade pod 1, se del zavarovanja proda za odplačilo dolga, ti pa plačaš kazen. Ljudje ta posojila
+  uporabljajo, da pridejo do denarja brez prodaje, da premostijo vrzel, za refinanciranje, za vzvod ali za zaščito pred
+  cenovnimi premiki (hedging), vsaka od teh uporab pa nosi tveganje likvidacije, obrestne mere in stablecoina.
+</ShortAnswer>
+
+<ScopeNote />
+
+{/* Vsaka številka z verige, številka bloka in vir za tem člankom: content/blog/snapshots/crypto-backed-loans.md */}
+
+## Kaj je posojilo s kripto zavarovanjem?
+
+Posojilo s kripto zavarovanjem je posojilo, zavarovano s kriptom, ki ga položiš kot zavarovanje. Na protokolu za posojanje, kot je Aave, je prekomerno zavarovano: zavarovanje mora biti vredno več kot posojilo, protokol pa namesto preverjanja tvojih prihodkov računa na to, da lahko proda del zavarovanja, če njegova vrednost preveč pade. Dokler je posojilo odprto, zavarovanje ostaja tvoje, z vsemi svojimi cenovnimi premiki, in ga lahko dobiš nazaj, ko odplačaš dolg.
+
+Večina ljudi si izposoja stablecoine, žetone, ki sledijo valuti: USDC in USDT sledita ameriškemu dolarju, EURC sledi evru. Zavarovanje je običajno nestanovitno sredstvo. Na trgih Aave na Ethereumu in Arbitrumu je ether na voljo kot WETH, bitcoin pa kot žeton, ki ga predstavlja, na primer WBTC ali cbBTC.
+
+Dve številki za vsako sredstvo v zavarovanju določata, koliko si lahko izposodiš in kdaj je posojilo v nevarnosti:
+
+- **Razmerje med posojilom in vrednostjo (LTV)** je največ, kar si lahko izposodiš proti sredstvu, kot delež njegove vrednosti.
+- **Prag likvidacije (liquidation threshold)** je delež vrednosti sredstva, ki šteje v tvoj health factor. Ko je tvoje tako uteženo zavarovanje vredno manj kot tvoj dolg, je health factor pod 1 in pozicijo je mogoče likvidirati.
+
+| Trg           | Zavarovanje | LTV (meja izposoje) | Prag likvidacije | Likvidacijski bonus |
+| ------------- | ----------- | ------------------- | ---------------- | ------------------- |
+| Ethereum Core | WETH        | 80,5 %              | 83 %             | 5 %                 |
+| Ethereum Core | WBTC        | 73 %                | 78 %             | 5 %                 |
+| Ethereum Core | cbBTC       | 73 %                | 78 %             | 7,5 %               |
+| Arbitrum      | WETH        | 80 %                | 84 %             | 5 %                 |
+| Arbitrum      | WBTC        | 73 %                | 78 %             | 7 %                 |
+
+Te vrednosti so bile prebrane na verigi 19. oktobra 2026 iz PoolDataProviderja vsakega trga, v bloku Ethereuma 26225342 in bloku Arbitruma 516228495. cbBTC ni na seznamu trga Aave na Arbitrumu. Upravljanje Aave lahko katero koli od njih spremeni. Kako se LTV in prag likvidacije razlikujeta, podrobneje pojasnjuje vodnik [kaj je Aave health factor](/sl/blog/aave-health-factor-razlozen).
+
+## Kako korak za korakom deluje posojilo na Aave?
+
+Aave V3 je nabor pametnih pogodb na vsakem omrežju, app.aave.com pa je eden od vmesnikov do njih. Center pomoči Aave opisuje izposojo in odplačilo v nekaj korakih; tukaj je, kaj vsak od njih vključuje.
+
+### Korak 1: položi zavarovanje
+
+Poveži denarnico, izberi sredstvo za polog, na primer WBTC, in ga položi. Preveri, ali je vklopljeno kot zavarovanje, ker v znesek, ki si ga lahko izposodiš, šteje samo zavarovanje. Žetoni so v pogodbi Pool tega trga, kjer si jih lahko izposodijo drugi uporabniki (to plačuje majhna obrestna mera za polog). Zavarovanje lahko dvigneš po odplačilu, del pa tudi, ko še dolguješ, če tvoj health factor potem ostane na 1 ali več.
+
+### Korak 2: izposodi si stablecoin
+
+Izberi stablecoin in znesek pod svojo mejo izposoje, ki je vrednost zavarovanja, pomnožena z njegovim LTV. Žetoni prispejo v tvojo denarnico, obresti pa se začnejo takoj obračunavati, po obrestni meri, ki jo protokol določi glede na to, koliko sredstva je izposojenega, in glede na parametre, ki jih lahko spremeni upravljanje (center pomoči Aave, Borrow Tokens). Aave V3 ima zdaj le spremenljivo obrestno mero: njegova dokumentacija za Pool pravi, da izposoje vedno uporabljajo način spremenljive obrestne mere, staro stabilno obrestno mero pa označuje kot opuščeno od v3.2.
+
+Spremenljive obrestne mere za izposojo 19. oktobra 2026, kot letni APY, kakor jih prikazuje aplikacija Aave (blok Ethereuma 26225342, blok Arbitruma 516228495):
+
+| Trg           | USDC   | USDT (USD₮0 na Arbitrumu) | GHO    | EURC                             |
+| ------------- | ------ | ------------------------- | ------ | -------------------------------- |
+| Ethereum Core | 4,58 % | 4,17 %                    | 4,60 % | 4,12 %                           |
+| Arbitrum      | 3,45 % | 4,21 %                    | 4,59 % | ni odprtega evrskega stablecoina |
+
+Te obrestne mere se ves čas spreminjajo in lahko poskočijo. 14. oktobra 2026 je obrestna mera za USDC na Ethereum Core v enem samem bloku zrasla na 13,67 % APR in se približno 36 minut pozneje vrnila, kot kaže vodnik [zakaj tvoj Aave health factor pade sam od sebe](/sl/blog/zakaj-je-padel-aave-health-factor#vzrok-3-so-se-obresti-na-tvoj-dolg-nabirale-hitreje-kot-na-zavarovanje).
+
+### Korak 3: spremljaj health factor
+
+Health factor (HF) je tvoje zavarovanje, uteženo s pragom likvidacije vsakega sredstva, deljeno s tvojim dolgom. Vzemimo alice, ki položi 1 WBTC na Ethereum Core, ko je bitcoin vreden ponazoritvenih 80.000 $ (orakelj Aave je v bloku Ethereuma 26225364 19. oktobra 2026 prebral 82.680,33 $), in si izposodi 24.000 USDC:
+
+- Meja izposoje: 80.000 × 0,73 = 58.400 $.
+- Health factor: 80.000 × 0,78 ÷ 24.000 = 2,60.
+- Likvidacijska cena: 24.000 ÷ 0,78 = 30.769,23 $, kar je 61,5 % pod 80.000 $.
+
+Health factor pade, ko pade bitcoin, in počasi, ko se dodajajo obresti: če bi obrestna mera za USDC ostala pri 4,58 % na leto, bi dolg po enem letu znašal približno 25.099 USDC, likvidacijska cena pa bi se dvignila na približno 32.179 $. Za izračun za svojo pozicijo glej [kako izračunati likvidacijsko ceno na Aave](/sl/blog/aave-likvidacijska-cena); koliko prostora pustiti, pa pove vodnik [kakšen je varen health factor na Aave](/sl/blog/varen-aave-health-factor).
+
+### Korak 4: odplačaj, ko se odločiš
+
+Datuma odplačila ni. Funkcija borrow v Aave sploh ne sprejme roka, ves dolg ali del dolga pa lahko odplačaš kadar koli, v izposojenem sredstvu (dokumentacija Aave V3 Pool; center pomoči Aave, Repay Tokens). Odplačilo v celoti sprosti tvoje zavarovanje. Odplačaš lahko tudi z zavarovanjem: na trgih na Ethereumu in Arbitrumu lahko vmesnik Aave proda del tvojega zavarovanja za sredstvo dolga in odplača v eni transakciji (dokumentacija Aave, swap features).
+
+### Korak 5: vedi, kaj se zgodi pod health factorjem 1
+
+Pod 1 lahko pozicijo likvidira kdor koli: odplača del tvojega dolga in vzame zavarovanje v tej vrednosti plus likvidacijski bonus. Ena likvidacija lahko odplača do 50 % dolga, dokler je health factor nad 0,95 in sta zavarovanje in dolg vsak vredna vsaj 2.000 $, in do 100 %, ko je health factor 0,95 ali manj ali je eden od njiju vreden manj kot 2.000 $ (center pomoči Aave).
+
+Če bi bitcoin kmalu po tem, ko si je alice izposodila, padel na 30.000 $, bi bil njen health factor 30.000 × 0,78 ÷ 24.000 = 0,975. Likvidator bi lahko odplačal 12.000 USDC in vzel 12.000 × 1,05 ÷ 30.000 = 0,42 WBTC, tako da bi ji ostalo 0,58 WBTC proti 12.000 USDC, kar je health factor 1,13. Izgubila bi 600 $ zavarovanja poleg odplačanega dolga, 0,42 WBTC pa bi bilo prodanih na dnu. Vsa pravila so v vodniku [kaj se zgodi, ko je tvoja pozicija na Aave likvidirana](/sl/blog/kako-deluje-likvidacija-na-aave).
+
+## V čem se posojilo s kripto zavarovanjem razlikuje od bančnega posojila?
+
+Glavne razlike so v tem, kaj gleda posojilodajalec, kdaj odplačaš in kaj se zgodi, ko zavarovanje izgubi vrednost:
+
+|                                       | Posojilo na Aave                                                                       | Običajno bančno posojilo                                                     |
+| ------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Kaj določa, koliko si lahko izposodiš | Vrednost tvojega zavarovanja in njegov LTV                                             | Običajno tvoji prihodki in kreditna zgodovina, poleg morebitnega zavarovanja |
+| Preverjanje tebe                      | Protokol ne preverja ničesar, gleda le zavarovanje                                     | Običajno preverjanje identitete, prihodkov in kreditne sposobnosti           |
+| Rok                                   | Ga ni: odplačaš, kadar želiš                                                           | Običajno fiksen rok in načrt odplačevanja                                    |
+| Obresti                               | Spremenljive, preračunane, ko se spreminja izposoja na trgu                            | Fiksne ali spremenljive, kot določa pogodba                                  |
+| Če zavarovanje izgubi vrednost        | Samodejna likvidacija s strani tretjih oseb, ko je health factor pod 1, brez obvestila | Odvisno od pogodbe: zahteva za dodatno zavarovanje, pogajanja, izvršba       |
+| Kdo hrani zavarovanje                 | Pametna pogodba trga                                                                   | Posojilodajalec ali skrbnik, ki ga izbere                                    |
+| Če zavarovanje ne pokrije dolga       | Primanjkljaj postane izguba protokola, ne terjatev do tebe                             | Odvisno od pogodbe in zakona                                                 |
+
+Zadnja vrstica izhaja iz tega, kako Aave V3.3 in novejše različice obravnavajo likvidacijo, ki porabi vse zavarovanje: preostali dolg se odpiše kot primanjkljaj (deficit) na sredstvu, kot pojasnjuje [razdelek o neizterljivem dolgu (bad debt)](/sl/blog/kako-deluje-likvidacija-na-aave#ali-lahko-likvidacija-pusti-neizterljiv-dolg). Zavarovanje je do takrat že izgubljeno.
+
+## V čem se razlikuje od centraliziranega kripto posojilodajalca?
+
+Centraliziran posojilodajalec vzame tvoje zavarovanje v lastno skrbništvo. Posojilo je lahko videti zelo podobno, vendar postaneš upnik podjetja, in če to propade, lahko tvoje zavarovanje obtiči pri njem. Leto 2022 je pokazalo, kaj to pomeni:
+
+- **Celsius** je 12. junija 2022 zamrznil dvige strank in 13. julija 2022 vložil predlog za stečaj. Po podatkih ameriške Komisije za trgovanje z blagovnimi terminskimi pogodbami (CFTC) so stranke pri njem položile približno 20 milijard $. Januarja 2023 je ameriško stečajno sodišče v New Yorku razsodilo, da je kripto na računih Earn pri Celsiusu po njegovih pogojih uporabe postal last Celsiusa, s čimer so te stranke postale nezavarovani upniki.
+- **Voyager Digital** je 1. julija 2022 ustavil trgovanje, pologe in dvige, potem ko Three Arrows Capital ni plačal obrokov posojila v višini 15.250 BTC in 350 milijonov $ v USDC, 5. julija 2022 pa je vložil predlog za stečaj po Chapter 11.
+- **Genesis** je novembra 2022 vlagateljem v programu Gemini Earn preprečil dvige, ko je imel po podatkih ameriške Komisije za vrednostne papirje in borzo (SEC) približno 900 milijonov $ njihovih sredstev, 19. januarja 2023 pa je vložil predlog po Chapter 11.
+- **BlockFi** je 28. novembra 2022 vložil predlog po Chapter 11, nekaj dni po tem, ko je ob propadu FTX ustavil dvige.
+
+Na Aave je zavarovanje v javni pametni pogodbi, katere pravila lahko prebere vsak, in ne v bilanci podjetja. S tem eno vrsto tveganj zamenjaš z drugo, ki so opisana spodaj pod [tveganji](#kaksna-so-tveganja-posojila-s-kripto-zavarovanjem): hrošči, napake oraklja (vira cene), odločitve upravljanja in skrbništvo za wrapped bitcoinom. Eno od njih je tukaj pomembno: emergency admin ali pool admin v Aave lahko sredstvo zaustavi, in dokler je zaustavljeno, ga nihče ne more dvigniti ali odplačati (pogodbi PoolConfigurator in ValidationLogic v Aave).
+
+## Za kaj ljudje uporabljajo posojila s kripto zavarovanjem?
+
+### Denar brez prodaje
+
+Eden od razlogov je priti do denarja in obdržati kripto, pogosto zato, ker imetnik pričakuje, da bo zrasel, ali ga želi obdržati leta. Posojilo ohrani ves potencial rasti in ves potencial padca zavarovanja, doda obresti in lahko izsili prodajo v najslabšem trenutku, če cena pade dovolj.
+
+Najem posojila tvojega zavarovanja ne proda: ostane tvoje. Ali imajo polog zavarovanja, posojilo, obresti ali likvidacija davčne posledice, je odvisno od tvoje države in včasih od pogojev protokola. Smernice britanskega davčnega organa na primer pravijo, da je od pogojev platforme za posojanje DeFi odvisno, ali se predaja zavarovanja šteje za odsvojitev, in kjer se ne, prodajo zavarovanja ob likvidaciji obravnavajo kot prodajo posojilojemalca (HMRC Cryptoassets Manual, CRYPTO61640). Ta vodnik ne daje davčnih nasvetov; preveri pravila, ki veljajo tam, kjer živiš.
+
+### Poraba ali premostitev vrzeli
+
+Nekateri si izposodijo, da pokrijejo strošek, preden prispe denar, ki ga pričakujejo, na primer račun, ki zapade pred prodajo ali plačo. Slaba stran je, da posojila nič ne konča namesto tebe: datuma odplačila ni, obrestna mera lahko med čakanjem zraste, pretvorba stablecoinov v denar na bančnem računu in nazaj za odplačilo pa ima svoje stroške.
+
+### Refinanciranje
+
+Posojilo drugje je mogoče prenesti na Aave, če je obrestna mera na Aave nižja, na Aave pa je dolg mogoče z zamenjavo dolga (debt swap) v vmesniku v eni transakciji preklopiti z enega stablecoina na drugega (dokumentacija Aave, swap features). Slaba stran: obrestne mere so spremenljive, zato je danes cenejše sredstvo lahko naslednji mesec dražje, prehod z dolarskega na evrski stablecoin pa spremeni valuto, ki jo dolguješ, kar je tema vodnika [short fiat valute s posojilom na Aave](/sl/blog/short-fiat-valute-z-aave).
+
+### Vzvod
+
+Za večjo izpostavljenost si nekateri izposodijo stablecoine, kupijo več sredstva za zavarovanje in položijo tudi tega. Če bi alice za svojih 24.000 USDC kupila 0,3 WBTC po 80.000 $ in jih položila, bi imela 1,3 WBTC proti 24.000 USDC: health factor 3,38 in likvidacijsko ceno 23.668,64 $. Vsak premik bitcoina jo zdaj prizadene 1,3-krat močneje kot neposredna lastnina 1 bitcoina, ponavljanje tega loopa (ponavljajoče se zadolževanje z vzvodom) pa health factor potiska proti 1.
+
+### Hedging in short
+
+Izposoja sredstva in njegova prodaja je stava, da bo padlo: položi stablecoine, izposodi si WETH in ga prodaj, pa pozicija pridobi, če ETH pade, in se približa likvidaciji, če ETH zraste ([vodnik o varnem health factorju](/sl/blog/varen-aave-health-factor) kaže, za koliko lahko zraste). Izposoja dolarskega ali evrskega stablecoina proti bitcoinu je zrcalna slika, short na valuto proti zavarovanju, čemur nekateri bitcoinerji pravijo short fiat valut; [short fiat valute s posojilom na Aave](/sl/blog/short-fiat-valute-z-aave) to preračuna s številkami.
+
+## Kakšna so tveganja posojila s kripto zavarovanjem?
+
+- **Likvidacija.** Pod health factorjem 1 je mogoče del dolga ali ves dolg odplačati s tvojim zavarovanjem, poleg tega pa izgubiš bonus: od 5 % do 7,5 % za sredstva v prvi tabeli. Likvidacije izvajajo konkurenčni boti, zato lahko sledijo hitro (center pomoči Aave).
+- **Nestanovitnost zavarovanja.** Bitcoin je novembra 2021 dosegel vrh pri približno 69.000 $ in je bil do sredine junija 2022 pri približno 17.000 $, kar je padec za približno 75 %, po propadu FTX novembra 2022 pa je padel pod 16.000 $ (blog ECB). S pragom likvidacije 78 % za WBTC bi bilo do sredine junija 2022 likvidirano celo posojilo v višini 20 % vrednosti zavarovanja, najeto ob vrhu leta 2021.
+- **Spremenljive obrestne mere.** Obrestna mera ni fiksna za nobeno obdobje, obresti pa sčasoma znižujejo tvoj health factor, tudi ko cene mirujejo.
+- **Depeg stablecoina (izguba vezave na dolar).** USDC je 11. marca 2023 padel na okoli 0,88 $, potem ko je Circle sporočil, da je 3,3 milijarde $ njegovih rezerv pri Silicon Valley Bank, do 13. marca pa je bil spet nad 0,99 $ (zapis Gauntleta na forumu Aave; Circle). TerraUSD, algoritmični stablecoin, je maja 2022 izgubil vezavo in padel skoraj na nič, kar je po navedbah ameriške SEC izbrisalo 40 milijard $ tržne vrednosti. Če stablecoin, ki ga dolguješ, pade, se tvoj dolg poceni; če pade stablecoin, ki ga uporabljaš kot zavarovanje, pade tvoj health factor.
+- **Wrapped bitcoin.** Bitcoin na Aave je žeton, ki ga krije bitcoin, ki ga hrani nekdo drug ali ga nadzoruje most (bridge). WBTC na primer navaja, da je vsak žeton krit z bitcoinom v skrbništvu. Če bi to kritje odpovedalo, bi žeton lahko izgubil vrednost ne glede na to, kaj bi naredil sam bitcoin.
+- **Pametne pogodbe, oraklji in upravljanje.** Hrošč, napačna cena ali sprememba parametra lahko prizadene pozicijo brez kakršnega koli premika trga. Marca 2026 je neusklajen orakelj menjalnega razmerja na trgih Ethereum Core in Prime v Aave znižal efektivno razmerje wstETH za približno 2,85 % in sprožil likvidacije približno 10.938 wstETH na 34 računih, po analizi dogodka (post-mortem) Chaos Labs ([več o napakah oraklja](/sl/blog/zakaj-je-padel-aave-health-factor#vzrok-6-je-napaka-orakla-ali-menjalnega-tecaja-napacno-ovrednotila-tvoje-zavarovanje)). Upravljanje lahko tudi zniža prag likvidacije za vse odprte pozicije ([več o znižanjih pragov](/sl/blog/zakaj-je-padel-aave-health-factor#vzrok-4-je-prag-likvidacije-znizalo-upravljanje-ali-risk-stewards)).
+- **Vse narediš sam.** Ključe imaš ti, transakcije pošiljaš ti, na hitrem trgu pa lahko potrditev odplačila traja dlje, kot pričakuješ.
+
+## Kako spremljaš posojilo?
+
+Lastni vmesniki Aave prikazujejo tvoj health factor, dokler so odprti, ne pošljejo pa ti sporočila, ko ta pade, kot pojasnjuje [vodnik o opozorilih za health factor](/sl/blog/nastavitev-aave-health-factor-opozorila#ali-aave-posilja-opozorila-za-health-factor). Eden od načinov spremljanja je, da izbereš health factor, pri katerem bi ukrepal, z odplačilom dela dolga ali dodajanjem zavarovanja, in naj te ločeno orodje opozori, ko pozicija pride tja. Tokenping preverja vsakih 5 minut in ti pošilja sporočila, dokler je tvoj health factor pod pragom, ki ga nastaviš; [vodnik za nastavitev](/sl/blog/nastavitev-aave-health-factor-opozorila) te vodi skozi postopek. Opozorilo ti da čas za ukrepanje, ne zaščite, vodnik [kako se izogniti likvidaciji na Aave](/sl/blog/kako-se-izogniti-likvidaciji-na-aave) pa pokriva, kaj s tem časom narediti.
+
+## Viri
+
+- Aave V3 Ethereum Core [PoolDataProvider](https://etherscan.io/address/0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD) in Arbitrum [PoolDataProvider](https://arbiscan.io/address/0x243Aa95cAC2a25651eda86e80bEe66114413c43b): LTV, pragi likvidacije, bonusi in spremenljive obrestne mere za izposojo, prebrani na verigi v bloku Ethereuma 26225342 in bloku Arbitruma 516228495 (podatki RPC, dostopano 19. oktobra 2026)
+- [Aave V3 Ethereum Core AaveOracle](https://etherscan.io/address/0x54586bE62E3c3580375aE3723C145253060Ca0C2): cena WBTC 82.680,33 $ v bloku Ethereuma 26225364 (podatki RPC, dostopano 19. oktobra 2026)
+- [Aave Help: Borrow Tokens](https://aave.com/help/borrowing/borrow-tokens) (dostopano 19. oktobra 2026)
+- [Aave Help: Repay Tokens](https://aave.com/help/borrowing/repay-tokens) (dostopano 19. oktobra 2026)
+- [Aave Help: Health Factor & Liquidations](https://aave.com/help/borrowing/liquidations) (dostopano 19. oktobra 2026)
+- [Dokumentacija pametne pogodbe Pool v Aave V3](https://aave.com/docs/aave-v3/smart-contracts/pool): parametri izposoje in odplačila, samo spremenljiva obrestna mera, stabilna obrestna mera opuščena v v3.2 (dostopano 19. oktobra 2026)
+- [Dokumentacija Aave: swap features](https://aave.com/docs/aave-v3/smart-contracts/swap-features): odplačilo z zavarovanjem in zamenjava dolga (dostopano 19. oktobra 2026)
+- [ValidationLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/ValidationLogic.sol), [SupplyLogic.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/libraries/logic/SupplyLogic.sol) in [PoolConfigurator.sol](https://github.com/aave-dao/aave-v3-origin/blob/main/src/contracts/protocol/pool/PoolConfigurator.sol), aave-v3-origin: dvigi med izposojo, zaustavitve in kdo jih lahko nastavi (dostopano 19. oktobra 2026)
+- [Sporočilo za javnost CFTC 8749-23 o Celsius Network](https://www.cftc.gov/PressRoom/PressReleases/8749-23), 13. julij 2023: približno 20 milijard $ pologov, dvigi zamrznjeni 12. junija 2022, predlog za stečaj vložen 13. julija 2022 (dostopano 19. oktobra 2026)
+- [Ameriško stečajno sodišče, Southern District of New York: mnenje o lastništvu sredstev na računih Celsius Earn](https://www.nysb.uscourts.gov/sites/default/files/opinions/312902_1822_opinion.pdf), 4. januar 2023 (dostopano 19. oktobra 2026)
+- [Voyager Digital: market update](https://www.newswire.ca/news-releases/voyager-digital-provides-market-update-851734302.html), 1. julij 2022, in [Voyager Digital: objava o Chapter 11](https://www.newswire.ca/news-releases/voyager-digital-commences-financial-restructuring-process-to-maximize-value-for-all-stakeholders-888320107.html), 5. julij 2022 (obe strani: dostopano 19. oktobra 2026)
+- [Sporočilo za javnost SEC 2023-7 o Genesis in programu Gemini Earn](https://www.sec.gov/news/press-release/2023-7), 12. januar 2023 (dostopano 19. oktobra 2026)
+- [Sporočilo za javnost SEC 2024-37 o Genesis](https://www.sec.gov/newsroom/press-releases/2024-37), 19. marec 2024: predlogi po Chapter 11 vloženi 19. januarja 2023 (dostopano 19. oktobra 2026)
+- [CoinDesk: BlockFi files for bankruptcy as FTX contagion spreads](https://www.coindesk.com/policy/2022/11/28/ftx-fallout-continues-as-crypto-lender-blockfi-declares-bankruptcy), 28. november 2022 (dostopano 19. oktobra 2026)
+- [The ECB Blog: Bitcoin's last stand](https://www.ecb.europa.eu/press/blog/date/2022/html/ecb.blog221130~5301eecd19.en.html), 30. november 2022: padec s približno 69.000 $ na približno 17.000 $ in pod 16.000 $ (dostopano 19. oktobra 2026)
+- [Gauntlet: Aave Resilient Through USDC Volatility](https://governance.aave.com/t/aave-resilient-through-usdc-volatility/12330), forum upravljanja Aave, 17. marec 2023 (dostopano 19. oktobra 2026)
+- [Circle: $3.3 Billion of USDC Reserve Risk Removed, Dollar De-peg Closes](https://www.circle.com/pressroom/3-3-billion-of-usdc-reserve-risk-removed-dollar-de-peg-closes), 12. marec 2023 (dostopano 19. oktobra 2026)
+- [Sporočilo za javnost SEC 2024-73 o Terraform](https://www.sec.gov/newsroom/press-releases/2024-73), 13. junij 2024: depeg UST maja 2022 (dostopano 19. oktobra 2026)
+- [WBTC](https://wbtc.network/): kako je WBTC krit (dostopano 19. oktobra 2026)
+- [Chaos Labs: Post-Mortem, Exchange Rate Misalignment on wstETH Core and Prime Instances](https://governance.aave.com/t/24269), forum upravljanja Aave, 10. marec 2026 (dostopano 19. oktobra 2026)
+- [HMRC Cryptoassets Manual, CRYPTO61640: DeFi lending and staking, collateral](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto61640), posodobljeno 28. novembra 2025 (dostopano 19. oktobra 2026)
+
+_Izobraževalna vsebina, ne finančni nasvet. Opozorila zmanjšajo tveganje, a ne preprečijo likvidacije._
