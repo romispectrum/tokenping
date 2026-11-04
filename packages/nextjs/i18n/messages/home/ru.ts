@@ -155,7 +155,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Каждый рынок Aave и каждый указанный рынок Morpho",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `Aave V3: ${ruMarkets(v3Markets)} ${ruOnNetworks(v3Networks)}; Aave V4: ${ruSpokes(spokes)} ${ruOnNetworks(v4Networks)}, по состоянию на 16 октября 2026 г. Кроме того, каждый указанный рынок Morpho ${ruOnNetworks(morphoNetworks)}.`,
+    `Aave V3: ${ruMarkets(v3Markets)} ${ruOnNetworks(v3Networks)}; Aave V4: ${ruSpokes(spokes)} ${ruOnNetworks(v4Networks)}, по состоянию на 4 ноября 2026 г. Кроме того, каждый указанный рынок Morpho ${ruOnNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => `V3: ${ruMarkets(count)}`,
     v4Spokes: count => `V4: ${ruSpokes(count)}`,

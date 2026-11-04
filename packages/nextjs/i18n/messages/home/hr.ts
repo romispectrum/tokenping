@@ -141,7 +141,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Svako tržište na Aaveu i svako navedeno tržište na Morphu",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `Aave V3: ${hrMarkets(v3Markets)} ${hrOnNetworks(v3Networks)}; Aave V4: ${hrSpokes(spokes)} ${hrOnNetworks(v4Networks)}, stanje 16. listopada 2026. Uz to svako navedeno tržište na Morphu ${hrOnNetworks(morphoNetworks)}.`,
+    `Aave V3: ${hrMarkets(v3Markets)} ${hrOnNetworks(v3Networks)}; Aave V4: ${hrSpokes(spokes)} ${hrOnNetworks(v4Networks)}, stanje 4. studenoga 2026. Uz to svako navedeno tržište na Morphu ${hrOnNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => `V3: ${hrMarkets(count)}`,
     v4Spokes: count => `V4: ${hrSpokes(count)}`,

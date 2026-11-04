@@ -125,7 +125,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Κάθε αγορά του Aave και κάθε καταχωρισμένη αγορά του Morpho",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${elV3Markets(v3Markets)} του Aave ${elOnNetworks(v3Networks)} και ${elV4Spokes(spokes)} του Aave ${elOnNetworks(v4Networks)}, στις 16 Οκτωβρίου 2026, καθώς και κάθε καταχωρισμένη αγορά του Morpho ${elOnNetworks(morphoNetworks)}.`,
+    `${elV3Markets(v3Markets)} του Aave ${elOnNetworks(v3Networks)} και ${elV4Spokes(spokes)} του Aave ${elOnNetworks(v4Networks)}, στις 4 Νοεμβρίου 2026, καθώς και κάθε καταχωρισμένη αγορά του Morpho ${elOnNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => elV3Markets(count),
     v4Spokes: count => elV4Spokes(count),

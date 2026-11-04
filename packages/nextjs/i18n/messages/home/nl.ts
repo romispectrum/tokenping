@@ -120,7 +120,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Elke Aave-markt en elke vermelde Morpho-markt",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${nlV3Markets(v3Markets)} van Aave op ${nlNetworks(v3Networks)} en ${nlV4Spokes(spokes)} van Aave op ${nlNetworks(v4Networks)}, per 16 oktober 2026, plus elke vermelde Morpho-markt op ${nlNetworks(morphoNetworks)}.`,
+    `${nlV3Markets(v3Markets)} van Aave op ${nlNetworks(v3Networks)} en ${nlV4Spokes(spokes)} van Aave op ${nlNetworks(v4Networks)}, per 4 november 2026, plus elke vermelde Morpho-markt op ${nlNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => nlV3Markets(count),
     v4Spokes: count => nlV4Spokes(count),

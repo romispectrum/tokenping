@@ -17,7 +17,7 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs, 
 
 - **Dashboard (read-only, no payment).** Connect a wallet to see its collateral, debt and health factor in every Aave V3
   market on a mainnet (24 markets on 21 networks, Ethereum's Core, Prime, EtherFi and Horizon among them) and in every
-  Aave V4 Spoke (20 Spokes on Ethereum, Avalanche, Arc and Base). Both lists live in
+  Aave V4 Spoke (24 Spokes on Ethereum, Avalanche, Arc and Base). Both lists live in
   `packages/nextjs/config/aaveConfig.ts`. Each V3 market and each V4 Spoke keeps a separate position and health factor,
   so each is its own market; the dashboard lists the markets where the wallet has a position or an alert and folds the
   rest away. Network logos and token icons come from CoinGecko and are served by the site. Positions are read with

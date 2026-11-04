@@ -370,7 +370,7 @@ describe("coverage", () => {
 
     expect(
       within(coverage).getByText(
-        "24 Aave V3 markets on 21 networks and 20 Aave V4 Spokes on 4 networks, as of 16 October 2026, plus every listed Morpho market on 14 networks.",
+        "24 Aave V3 markets on 21 networks and 24 Aave V4 Spokes on 4 networks, as of 4 November 2026, plus every listed Morpho market on 14 networks.",
       ),
     ).toBeTruthy();
     expect(tiles).toHaveLength(NETWORKS.length);
@@ -381,7 +381,7 @@ describe("coverage", () => {
       // The written name is read, the logo (or the initial) beside it is not.
       expect(within(tile).queryByRole("img")).toBeNull();
     });
-    expect(within(tiles[0]).getByText("4 V3 markets · 13 V4 Spokes · Morpho")).toBeTruthy();
+    expect(within(tiles[0]).getByText("4 V3 markets · 16 V4 Spokes · Morpho")).toBeTruthy();
     expect(within(tiles[1]).getByText("1 V3 market · Morpho")).toBeTruthy();
     expect(within(tiles[4]).getByText("1 V3 market · 1 V4 Spoke · Morpho")).toBeTruthy();
     expect(within(tiles[6]).getByText("1 V3 market")).toBeTruthy();

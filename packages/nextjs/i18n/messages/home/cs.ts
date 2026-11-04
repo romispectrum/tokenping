@@ -127,7 +127,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Všechny trhy Aave a všechny uvedené trhy Morpho",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${csMarkets(v3Markets)} Aave V3 ${csOnNetworks(v3Networks)} a ${csMarkets(spokes)} (Spoke) Aave V4 ${csOnNetworks(v4Networks)}, ke 16. říjnu 2026, a k tomu všechny uvedené trhy Morpho ${csOnNetworks(morphoNetworks)}.`,
+    `${csMarkets(v3Markets)} Aave V3 ${csOnNetworks(v3Networks)} a ${csMarkets(spokes)} (Spoke) Aave V4 ${csOnNetworks(v4Networks)}, ke 4. listopadu 2026, a k tomu všechny uvedené trhy Morpho ${csOnNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => `${csMarkets(count)} V3`,
     v4Spokes: count => `${csMarkets(count)} V4 (Spoke)`,

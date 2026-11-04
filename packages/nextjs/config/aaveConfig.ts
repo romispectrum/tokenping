@@ -264,8 +264,9 @@ export type AaveV4Spoke = {
 const v4Spokes = (chain: Chain, name: string, spokes: Record<string, Address>): AaveV4Spoke[] =>
   Object.entries(spokes).map(([spokeName, spoke]) => ({ chain, spoke, name, spokeName }));
 
-// Every Aave V4 Spoke on a mainnet, from Aave's V4 API (api.v4.aave.com, `spokes`, checked 16 Oct 2026; each one
-// answered getReserveCount on chain). Main first on each network, then alphabetical.
+// Every Aave V4 Spoke on a mainnet, from Aave's V4 API (api.v4.aave.com, `spokes`, checked 4 Nov 2026; each one
+// answered getReserveCount on chain). Main first on each network, then alphabetical. Sentora's Hub on Ethereum has a
+// Spoke the API also calls "Bluechip"; it is "Sentora Bluechip" here so its label differs from the Prime/Core one.
 export const AAVE_V4_SPOKES: readonly AaveV4Spoke[] = [
   ...v4Spokes(chains.mainnet, "Ethereum", {
     Main: "0x94e7A5dCbE816e498b89aB752661904E2F56c485",
@@ -279,12 +280,16 @@ export const AAVE_V4_SPOKES: readonly AaveV4Spoke[] = [
     Lido: "0xe1900480ac69f0B296841Cd01cC37546d92F35Cd",
     Lombard: "0x7EC68b5695e803e98a21a9A05d744F28b0a7753D",
     "Maple SyrupUSDG": "0x774b9655413c34809c1f1b16b654465A89EBE989",
+    "OUSD Yield": "0xbb97b61Ad6747D337E5805F2d159d275BB1f0828",
     "PAXG Gold": "0xAD75cE6354f87F3135cE10621d385d8D1e2562C2",
+    "RLUSD Yield": "0x9EbF0C19BF7dFE859820Cc09E846114b53814e52",
+    "Sentora Bluechip": "0xA37e7cdC557f3C7f745FB3F337b6439979662c46",
     "USDG Pendle": "0x956d8e0A89cfa3744428C4641b5a53B56167a7f9",
   }),
   ...v4Spokes(chains.avalanche, "Avalanche", {
     Main: "0x435272CefF93a1E657E8ABfdf0A13e95900A3a56",
     "AVAX Correlated": "0x3b517594277c67307CF2d7CBE6FE1D4399B68c41",
+    "Ethena Ecosystem": "0xaf22446124e566e54845f65b722E4dCbf12b650A",
     Forex: "0x6a37776B5E026dBdF043b4F933c323C84DD1B514",
   }),
   ...v4Spokes(arc, "Arc", {

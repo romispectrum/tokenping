@@ -107,7 +107,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Tüm Aave piyasaları ve listelenen tüm Morpho piyasaları",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `16 Ekim 2026 itibarıyla ${v3Networks} ağda ${v3Markets} Aave V3 piyasası ve ${v4Networks} ağda ${spokes} Aave V4 Spoke; buna ek olarak ${morphoNetworks} ağda listelenen tüm Morpho piyasaları.`,
+    `4 Kasım 2026 itibarıyla ${v3Networks} ağda ${v3Markets} Aave V3 piyasası ve ${v4Networks} ağda ${spokes} Aave V4 Spoke; buna ek olarak ${morphoNetworks} ağda listelenen tüm Morpho piyasaları.`,
   coverage: {
     v3Markets: count => `${count} V3 piyasası`,
     v4Spokes: count => `${count} V4 Spoke`,

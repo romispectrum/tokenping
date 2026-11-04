@@ -113,7 +113,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Mọi thị trường Aave và mọi thị trường Morpho được liệt kê",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${viMarkets(v3Markets)} Aave V3 trên ${viNetworks(v3Networks)} và ${viSpokes(spokes)} Aave V4 trên ${viNetworks(v4Networks)}, tính đến ngày 16 tháng 10 năm 2026, cùng mọi thị trường Morpho được liệt kê trên ${viNetworks(morphoNetworks)}.`,
+    `${viMarkets(v3Markets)} Aave V3 trên ${viNetworks(v3Networks)} và ${viSpokes(spokes)} Aave V4 trên ${viNetworks(v4Networks)}, tính đến ngày 4 tháng 11 năm 2026, cùng mọi thị trường Morpho được liệt kê trên ${viNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => `${viMarkets(count)} V3`,
     v4Spokes: count => `${viSpokes(count)} V4`,

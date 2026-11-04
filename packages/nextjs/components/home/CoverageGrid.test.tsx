@@ -33,9 +33,9 @@ describe("getCoverageTiles", () => {
   it("says what is read on each network: V3 markets, V4 Spokes, Morpho, or several", () => {
     const tiles = getCoverageTiles(HOME_MESSAGES.en.coverage);
 
-    expect(detailOf(tiles, "Ethereum")).toBe("4 V3 markets · 13 V4 Spokes · Morpho");
+    expect(detailOf(tiles, "Ethereum")).toBe("4 V3 markets · 16 V4 Spokes · Morpho");
     expect(detailOf(tiles, "Polygon")).toBe("1 V3 market · Morpho");
-    expect(detailOf(tiles, "Avalanche")).toBe("1 V3 market · 3 V4 Spokes");
+    expect(detailOf(tiles, "Avalanche")).toBe("1 V3 market · 4 V4 Spokes");
     expect(detailOf(tiles, "Base")).toBe("1 V3 market · 1 V4 Spoke · Morpho");
     expect(detailOf(tiles, "Arc")).toBe("3 V4 Spokes · Morpho");
     expect(detailOf(tiles, "Gnosis")).toBe("1 V3 market");
@@ -46,7 +46,7 @@ describe("getCoverageTiles", () => {
   it("takes the Czech labels, with Czech plurals", () => {
     const tiles = getCoverageTiles(HOME_MESSAGES.cs.coverage);
 
-    expect(detailOf(tiles, "Ethereum")).toBe("4 trhy V3 · 13 trhů V4 (Spoke) · Morpho");
+    expect(detailOf(tiles, "Ethereum")).toBe("4 trhy V3 · 16 trhů V4 (Spoke) · Morpho");
     expect(detailOf(tiles, "Polygon")).toBe("1 trh V3 · Morpho");
     expect(detailOf(tiles, "Base")).toBe("1 trh V3 · 1 trh V4 (Spoke) · Morpho");
     expect(detailOf(tiles, "Arc")).toBe("3 trhy V4 (Spoke) · Morpho");
@@ -75,7 +75,7 @@ describe("CoverageGrid", () => {
       expect(within(tile as HTMLElement).queryByRole("img")).toBeNull();
       expect(within(tile as HTMLElement).getByText(name)).toBeTruthy();
     });
-    expect(within(tiles[0] as HTMLElement).getByText("4 V3 markets · 13 V4 Spokes · Morpho")).toBeTruthy();
+    expect(within(tiles[0] as HTMLElement).getByText("4 V3 markets · 16 V4 Spokes · Morpho")).toBeTruthy();
     expect(within(tiles[21] as HTMLElement).getByText("3 V4 Spokes · Morpho")).toBeTruthy();
   });
 

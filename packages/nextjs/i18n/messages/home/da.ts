@@ -118,7 +118,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Hvert marked på Aave og hvert listet marked på Morpho",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${daV3Markets(v3Markets)} på Aave på ${daNetworks(v3Networks)} og ${daV4Spokes(spokes)} på Aave på ${daNetworks(v4Networks)} pr. 16. oktober 2026 samt hvert listet marked på Morpho på ${daNetworks(morphoNetworks)}.`,
+    `${daV3Markets(v3Markets)} på Aave på ${daNetworks(v3Networks)} og ${daV4Spokes(spokes)} på Aave på ${daNetworks(v4Networks)} pr. 4. november 2026 samt hvert listet marked på Morpho på ${daNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => daV3Markets(count),
     v4Spokes: count => daV4Spokes(count),

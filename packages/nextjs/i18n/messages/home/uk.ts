@@ -164,7 +164,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Кожен ринок Aave і кожен ринок Morpho з переліку",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `Aave V3: ${ukMarkets(v3Markets)} ${ukOnNetworks(v3Networks)}; Aave V4: ${ukSpokes(spokes)} ${ukOnNetworks(v4Networks)}, станом на 16 жовтня 2026 р. А також кожен ринок Morpho з переліку ${ukOnNetworks(morphoNetworks)}.`,
+    `Aave V3: ${ukMarkets(v3Markets)} ${ukOnNetworks(v3Networks)}; Aave V4: ${ukSpokes(spokes)} ${ukOnNetworks(v4Networks)}, станом на 4 листопада 2026 р. А також кожен ринок Morpho з переліку ${ukOnNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => `V3: ${ukMarkets(count)}`,
     v4Spokes: count => `V4: ${ukSpokes(count)}`,

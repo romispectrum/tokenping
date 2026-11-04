@@ -281,12 +281,12 @@ describe("Czech copy", () => {
 
     expect(
       within(coverage).getByText(
-        "24 trhů Aave V3 na 21 sítích a 20 trhů (Spoke) Aave V4 na 4 sítích, ke 16. říjnu 2026, a k tomu všechny uvedené trhy Morpho na 14 sítích.",
+        "24 trhů Aave V3 na 21 sítích a 24 trhů (Spoke) Aave V4 na 4 sítích, ke 4. listopadu 2026, a k tomu všechny uvedené trhy Morpho na 14 sítích.",
       ),
     ).toBeTruthy();
     expect(tiles).toHaveLength(NETWORK_COUNT);
     expect(within(tiles[0]).getByText("Ethereum")).toBeTruthy();
-    expect(within(tiles[0]).getByText("4 trhy V3 · 13 trhů V4 (Spoke) · Morpho")).toBeTruthy();
+    expect(within(tiles[0]).getByText("4 trhy V3 · 16 trhů V4 (Spoke) · Morpho")).toBeTruthy();
     expect(within(tiles[1]).getByText("1 trh V3 · Morpho")).toBeTruthy();
     expect(within(tiles[4]).getByText("1 trh V3 · 1 trh V4 (Spoke) · Morpho")).toBeTruthy();
     expect(within(tiles[6]).getByText("1 trh V3")).toBeTruthy();

@@ -113,7 +113,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Minden Aave-piac és minden listázott Morpho-piac",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${v3Markets} Aave V3-piac ${v3Networks} hálózaton és ${spokes} Aave V4 Spoke ${v4Networks} hálózaton (2026. október 16-i állapot), valamint minden listázott Morpho-piac ${morphoNetworks} hálózaton.`,
+    `${v3Markets} Aave V3-piac ${v3Networks} hálózaton és ${spokes} Aave V4 Spoke ${v4Networks} hálózaton (2026. november 4-i állapot), valamint minden listázott Morpho-piac ${morphoNetworks} hálózaton.`,
   coverage: {
     v3Markets: count => `${count} V3-piac`,
     v4Spokes: count => `${count} V4 Spoke`,

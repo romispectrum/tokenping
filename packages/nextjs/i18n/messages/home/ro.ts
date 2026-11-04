@@ -133,7 +133,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Fiecare piață Aave și fiecare piață Morpho listată",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${roV3Markets(v3Markets)} Aave pe ${roNetworks(v3Networks)} și ${roV4Spokes(spokes)} Aave pe ${roNetworks(v4Networks)}, la 16 octombrie 2026, plus fiecare piață Morpho listată pe ${roNetworks(morphoNetworks)}.`,
+    `${roV3Markets(v3Markets)} Aave pe ${roNetworks(v3Networks)} și ${roV4Spokes(spokes)} Aave pe ${roNetworks(v4Networks)}, la 4 noiembrie 2026, plus fiecare piață Morpho listată pe ${roNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => roV3Markets(count),
     v4Spokes: count => roV4Spokes(count),

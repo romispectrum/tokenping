@@ -1,12 +1,5 @@
 import { type HomeMessages, rich } from "./shared";
 import { capitalize, formatDecimal } from "~~/i18n/format";
-import type { AlertPlan } from "~~/services/marketing/alertPlan";
-
-// The alert price ("3 USDC kada 30 araw" or the blog's fallback) always follows "Nagkakahalaga ang mga alerto ng"
-// or starts a row on its own.
-
-/** "3 USDC kada 30 araw": Filipino nouns do not change after a number. */
-const filPrice = (plan: AlertPlan) => `${formatDecimal("fil", plan.priceLabel)} kada ${plan.days} araw`;
 
 /** "sa Arbitrum One", or the payment network unnamed. */
 const filOnChain = (chainName: string | undefined) => (chainName ? `sa ${chainName}` : "sa network ng bayad");
@@ -114,7 +107,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Bawat Aave market at bawat nakalistang Morpho market",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${v3Markets} market ng Aave V3 sa ${v3Networks} network at ${spokes} Aave V4 Spoke sa ${v4Networks} network, noong Oktubre 16, 2026, dagdag pa ang bawat nakalistang Morpho market sa ${morphoNetworks} network.`,
+    `${v3Markets} market ng Aave V3 sa ${v3Networks} network at ${spokes} Aave V4 Spoke sa ${v4Networks} network, noong Nobyembre 4, 2026, dagdag pa ang bawat nakalistang Morpho market sa ${morphoNetworks} network.`,
   coverage: {
     v3Markets: count => `${count} V3 market`,
     v4Spokes: count => `${count} V4 Spoke`,

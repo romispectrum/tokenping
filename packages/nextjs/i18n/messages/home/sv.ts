@@ -118,7 +118,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Varje marknad på Aave och varje listad marknad på Morpho",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${svV3Markets(v3Markets)} på Aave på ${svNetworks(v3Networks)} och ${svV4Spokes(spokes)} på Aave på ${svNetworks(v4Networks)}, per 16 oktober 2026, plus varje listad marknad på Morpho på ${svNetworks(morphoNetworks)}.`,
+    `${svV3Markets(v3Markets)} på Aave på ${svNetworks(v3Networks)} och ${svV4Spokes(spokes)} på Aave på ${svNetworks(v4Networks)}, per 4 november 2026, plus varje listad marknad på Morpho på ${svNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => svV3Markets(count),
     v4Spokes: count => svV4Spokes(count),

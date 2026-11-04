@@ -130,7 +130,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Всеки пазар на Aave и всеки изброен пазар на Morpho",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${bgMarkets(v3Markets)} на Aave V3 ${bgOnNetworks(v3Networks)} и ${bgSpokes(spokes)} на Aave V4 ${bgOnNetworks(v4Networks)}, към 16 октомври 2026 г., както и всеки изброен пазар на Morpho ${bgOnNetworks(morphoNetworks)}.`,
+    `${bgMarkets(v3Markets)} на Aave V3 ${bgOnNetworks(v3Networks)} и ${bgSpokes(spokes)} на Aave V4 ${bgOnNetworks(v4Networks)}, към 4 ноември 2026 г., както и всеки изброен пазар на Morpho ${bgOnNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => `${bgMarkets(count)} V3`,
     v4Spokes: count => `${bgSpokes(count)} V4`,

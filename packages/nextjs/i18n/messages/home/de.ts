@@ -125,7 +125,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Jeder Aave-Markt und jeder gelistete Morpho-Markt",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${deV3Markets(v3Markets)} von Aave ${deOnNetworks(v3Networks)} und ${deV4Spokes(spokes)} von Aave ${deOnNetworks(v4Networks)}, Stand 16. Oktober 2026, dazu jeder gelistete Morpho-Markt ${deOnNetworks(morphoNetworks)}.`,
+    `${deV3Markets(v3Markets)} von Aave ${deOnNetworks(v3Networks)} und ${deV4Spokes(spokes)} von Aave ${deOnNetworks(v4Networks)}, Stand 4. November 2026, dazu jeder gelistete Morpho-Markt ${deOnNetworks(morphoNetworks)}.`,
   coverage: {
     v3Markets: count => deV3Markets(count),
     v4Spokes: count => deV4Spokes(count),

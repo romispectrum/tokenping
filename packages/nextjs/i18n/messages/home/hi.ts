@@ -110,7 +110,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Aave का हर मार्केट और Morpho का हर लिस्टेड मार्केट",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${hiNetworks(v3Networks)} पर Aave V3 के ${hiMarkets(v3Markets)} और ${hiNetworks(v4Networks)} पर Aave V4 के ${hiSpokes(spokes)}, 16 अक्टूबर 2026 तक, साथ में ${hiNetworks(morphoNetworks)} पर Morpho का हर लिस्टेड मार्केट।`,
+    `${hiNetworks(v3Networks)} पर Aave V3 के ${hiMarkets(v3Markets)} और ${hiNetworks(v4Networks)} पर Aave V4 के ${hiSpokes(spokes)}, 4 नवंबर 2026 तक, साथ में ${hiNetworks(morphoNetworks)} पर Morpho का हर लिस्टेड मार्केट।`,
   coverage: {
     v3Markets: count => `${count} V3 मार्केट`,
     v4Spokes: count => `${count} V4 Spoke`,

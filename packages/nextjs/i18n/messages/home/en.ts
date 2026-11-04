@@ -95,7 +95,7 @@ export const MESSAGES: HomeMessages = {
 
   coverageTitle: "Every Aave market and every listed Morpho market",
   coverageLead: ({ v3Markets, v3Networks, spokes, v4Networks, morphoNetworks }) =>
-    `${v3Markets} Aave V3 markets on ${v3Networks} networks and ${spokes} Aave V4 Spokes on ${v4Networks} networks, as of 16 October 2026, plus every listed Morpho market on ${morphoNetworks} networks.`,
+    `${v3Markets} Aave V3 markets on ${v3Networks} networks and ${spokes} Aave V4 Spokes on ${v4Networks} networks, as of 4 November 2026, plus every listed Morpho market on ${morphoNetworks} networks.`,
   coverage: {
     v3Markets: count => (count === 1 ? "1 V3 market" : `${count} V3 markets`),
     v4Spokes: count => (count === 1 ? "1 V4 Spoke" : `${count} V4 Spokes`),

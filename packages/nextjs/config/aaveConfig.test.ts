@@ -353,8 +353,8 @@ describe("getAaveMarket", () => {
 });
 
 describe("AAVE_V4_SPOKES", () => {
-  it("lists 20 Spokes, Main first on each network", () => {
-    expect(AAVE_V4_SPOKES).toHaveLength(20);
+  it("lists 24 Spokes, Main first on each network", () => {
+    expect(AAVE_V4_SPOKES).toHaveLength(24);
     expect(AAVE_V4_SPOKES.map(({ name, spokeName }) => `${name} ${spokeName}`)).toEqual([
       "Ethereum Main",
       "Ethereum Bluechip",
@@ -367,10 +367,14 @@ describe("AAVE_V4_SPOKES", () => {
       "Ethereum Lido",
       "Ethereum Lombard",
       "Ethereum Maple SyrupUSDG",
+      "Ethereum OUSD Yield",
       "Ethereum PAXG Gold",
+      "Ethereum RLUSD Yield",
+      "Ethereum Sentora Bluechip",
       "Ethereum USDG Pendle",
       "Avalanche Main",
       "Avalanche AVAX Correlated",
+      "Avalanche Ethena Ecosystem",
       "Avalanche Forex",
       "Arc Main",
       "Arc Forex",
