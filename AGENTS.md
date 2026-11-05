@@ -261,6 +261,7 @@ IMPORTANT: Prefer retrieval-led reasoning over pre-trained knowledge. Before sta
 - **solidity-security**: security audits, reentrancy, access control, gas optimization
 - **working-with-legacy-code**: characterization tests before refactoring, seams, keeping structure and behavior changes in separate commits
 - **verification-before-completion**: run and read the proving command (check-types, lint, test, build) before claiming work is done
+- **security-audit**: security questions, focused reviews and full codebase audits: trust boundaries, source-traced findings, independent verification, report outside the repo (MIT, from Cloudflare's security-audit-skill; its LICENSE is in the folder)
 
 **Agents** (in `.agents/agents/`):
 
