@@ -224,6 +224,13 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "how-aave-liquidation-works",
     "aave-v4-vs-v3",
   ],
+  "is-defi-lending-safe": [
+    "aave-health-factor",
+    "aave-vs-morpho",
+    "crypto-backed-loans",
+    "safe-aave-health-factor",
+    "stablecoin-depeg-aave",
+  ],
   "aave-v4-vs-v3": [
     "aave-health-factor",
     "how-aave-liquidation-works",

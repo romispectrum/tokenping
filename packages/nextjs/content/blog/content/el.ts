@@ -7,6 +7,7 @@ import SafeAaveHealthFactor from "~~/content/blog/el/asfalis-health-factor-aave.
 import CryptoBackedLoans from "~~/content/blog/el/daneia-me-exasfalisi-crypto.mdx";
 import StablecoinDepegAave from "~~/content/blog/el/depeg-stablecoin-sto-aave.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/el/eidopoiiseis-aave-se-mi-enochleite.mdx";
+import IsDefiLendingSafe from "~~/content/blog/el/einai-asfalis-o-defi-danismos.mdx";
 import AaveInterestRates from "~~/content/blog/el/epitokia-aave.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/el/ergaleia-eidopoiiseon-reustopoiisis-aave.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/el/giati-apotygchanei-i-analipsi-i-o-daneismos-sto-aave.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-daneia-stathero-epitokio": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-sygkrisi": AaveVsMorpho,
   "aave-v4-vs-v3-diafores": AaveV4VsV3,
+  "einai-asfalis-o-defi-danismos": IsDefiLendingSafe,
 };

@@ -14,6 +14,7 @@ import WhyAaveHealthFactorDropped from "~~/content/blog/ro/de-ce-a-scazut-health
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/ro/de-ce-nu-poti-retrage-sau-imprumuta-pe-aave.mdx";
 import StablecoinDepegAave from "~~/content/blog/ro/depeg-stablecoin-pe-aave.mdx";
 import AaveInterestRates from "~~/content/blog/ro/dobanzile-aave.mdx";
+import IsDefiLendingSafe from "~~/content/blog/ro/este-creditarea-defi-sigura.mdx";
 import AaveHealthFactor from "~~/content/blog/ro/health-factor-aave-explicat.mdx";
 import MorphoHealthFactor from "~~/content/blog/ro/health-factor-morpho-explicat.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/ro/health-factor-sigur-aave.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "imprumuturi-cu-dobanda-fixa-morpho-midnight": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-comparatie": AaveVsMorpho,
   "aave-v4-vs-v3-diferente": AaveV4VsV3,
+  "este-creditarea-defi-sigura": IsDefiLendingSafe,
 };

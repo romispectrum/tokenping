@@ -6,6 +6,7 @@ import AaveInterestRates from "~~/content/blog/nb/aave-renter.mdx";
 import AaveV4VsV3 from "~~/content/blog/nb/aave-v4-vs-v3-forskjeller.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/nb/aave-varsler-i-ikke-forstyrr.mdx";
 import AaveVsMorpho from "~~/content/blog/nb/aave-vs-morpho-sammenligning.mdx";
+import IsDefiLendingSafe from "~~/content/blog/nb/er-defi-utlan-trygt.mdx";
 import WhoNeedsHealthFactorAlerts from "~~/content/blog/nb/hvem-trenger-health-factor-varsler.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/nb/hvorfor-falt-din-aave-health-factor.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/nb/hvorfor-uttak-eller-lan-pa-aave-feiler.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-lan-med-fast-rente": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-sammenligning": AaveVsMorpho,
   "aave-v4-vs-v3-forskjeller": AaveV4VsV3,
+  "er-defi-utlan-trygt": IsDefiLendingSafe,
 };

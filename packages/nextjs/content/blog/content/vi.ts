@@ -9,6 +9,7 @@ import AvoidAaveLiquidation from "~~/content/blog/vi/cach-tranh-bi-thanh-ly-tren
 import AaveHealthFactorAlertSetup from "~~/content/blog/vi/cai-dat-canh-bao-he-so-suc-khoe-aave.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/vi/canh-bao-aave-khi-bat-khong-lam-phien.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/vi/canh-bao-aave-va-quyen-rieng-tu.mdx";
+import IsDefiLendingSafe from "~~/content/blog/vi/cho-vay-defi-co-an-toan-khong.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/vi/co-che-thanh-ly-tren-aave.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/vi/co-che-thanh-ly-tren-morpho.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/vi/co-phieu-token-hoa-lam-tai-san-the-chap.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "khoan-vay-lai-suat-co-dinh-morpho-midnight": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-so-sanh": AaveVsMorpho,
   "aave-v4-vs-v3-khac-biet": AaveV4VsV3,
+  "cho-vay-defi-co-an-toan-khong": IsDefiLendingSafe,
 };

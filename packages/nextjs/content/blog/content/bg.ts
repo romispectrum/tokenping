@@ -4,6 +4,7 @@ import AaveHealthFactor from "~~/content/blog/bg/aave-health-factor-obyasnenie.m
 import AaveV4VsV3 from "~~/content/blog/bg/aave-v4-vs-v3-razliki.mdx";
 import AaveVsMorpho from "~~/content/blog/bg/aave-vs-morpho-sravnenie.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/bg/bezopasen-health-factor-aave.mdx";
+import IsDefiLendingSafe from "~~/content/blog/bg/bezopasno-li-e-defi-kreditiraneto.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/bg/chastni-izvestiya-za-likvidatsiya-aave.mdx";
 import StablecoinDepegAave from "~~/content/blog/bg/depeg-na-steyblkoyn-v-aave.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/bg/instrumenti-za-izvestiya-za-likvidatsiya-aave.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-zaemi-s-fiksirana-lihva": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-sravnenie": AaveVsMorpho,
   "aave-v4-vs-v3-razliki": AaveV4VsV3,
+  "bezopasno-li-e-defi-kreditiraneto": IsDefiLendingSafe,
 };

@@ -8,6 +8,7 @@ import StablecoinDepegAave from "~~/content/blog/cs/depeg-stablecoinu-a-aave.mdx
 import HowAaveLiquidationWorks from "~~/content/blog/cs/jak-funguje-likvidace-aave.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/cs/jak-funguje-likvidace-morpho.mdx";
 import AvoidAaveLiquidation from "~~/content/blog/cs/jak-se-vyhnout-likvidaci-aave.mdx";
+import IsDefiLendingSafe from "~~/content/blog/cs/je-defi-lending-bezpecny.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/cs/likvidace-na-aave-nebo-morpho-co-ted.mdx";
 import AaveLiquidationPrice from "~~/content/blog/cs/likvidacni-cena-aave.mdx";
 import MorphoHealthFactor from "~~/content/blog/cs/morpho-health-factor-vysvetleni.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-pujcky-s-pevnou-sazbou": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-srovnani": AaveVsMorpho,
   "aave-v4-vs-v3-co-se-meni": AaveV4VsV3,
+  "je-defi-lending-bezpecny": IsDefiLendingSafe,
 };

@@ -17,6 +17,7 @@ import AvoidAaveLiquidation from "~~/content/blog/it/evitare-la-liquidazione-su-
 import SafeAaveHealthFactor from "~~/content/blog/it/fattore-di-salute-aave-sicuro.mdx";
 import AaveHealthFactor from "~~/content/blog/it/fattore-di-salute-aave.mdx";
 import MorphoHealthFactor from "~~/content/blog/it/fattore-di-salute-morpho.mdx";
+import IsDefiLendingSafe from "~~/content/blog/it/il-prestito-defi-e-sicuro.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/it/liquidato-su-aave-o-morpho-e-ora.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/it/morpho-midnight-prestiti-a-tasso-fisso.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/it/perche-il-fattore-di-salute-aave-e-sceso.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-prestiti-a-tasso-fisso": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-confronto": AaveVsMorpho,
   "aave-v4-vs-v3-differenze": AaveV4VsV3,
+  "il-prestito-defi-e-sicuro": IsDefiLendingSafe,
 };

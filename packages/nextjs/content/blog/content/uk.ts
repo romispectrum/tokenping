@@ -7,6 +7,7 @@ import AaveVsMorpho from "~~/content/blog/uk/aave-vs-morpho-porivniannia.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/uk/bezpechnyi-health-factor-aave.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/uk/chomu-ne-vdaietsia-vyvesty-abo-pozychyty-na-aave.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/uk/chomu-vpav-health-factor-aave.mdx";
+import IsDefiLendingSafe from "~~/content/blog/uk/chy-bezpechne-defi-kredytuvannia.mdx";
 import StablecoinDepegAave from "~~/content/blog/uk/depeg-steiblkoina-na-aave.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/uk/instrumenty-spovishchen-pro-likvidatsiiu-aave.mdx";
 import WhoNeedsHealthFactorAlerts from "~~/content/blog/uk/komu-potribni-spovishchennia-health-factor.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-pozyky-z-fiksovanoiu-stavkoiu": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-porivniannia": AaveVsMorpho,
   "aave-v4-vs-v3-vidminnosti": AaveV4VsV3,
+  "chy-bezpechne-defi-kredytuvannia": IsDefiLendingSafe,
 };

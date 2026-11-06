@@ -345,6 +345,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "is-defi-lending-safe",
+        title: "Is DeFi lending safe? The real risks, with examples",
+        description:
+          "The real risks of DeFi lending for borrowers and lenders: liquidation, bugs, oracles, bad collateral, bad debt and frozen withdrawals, with real cases.",
+        h1: "Is DeFi lending safe?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Is DeFi lending safe, and what can actually go wrong?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   cs: [
     {
@@ -685,6 +698,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Jaký je rozdíl mezi Aave V3 a Aave V4 pro dlužníka?",
         readingMinutes: 13,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "je-defi-lending-bezpecny",
+        title: "Je DeFi lending bezpečný? Skutečná rizika s příklady",
+        description:
+          "Skutečná rizika DeFi lendingu pro dlužníky i věřitele: likvidace, chyby, orákula, špatný kolaterál, nedobytný dluh a zamčené výběry.",
+        h1: "Je DeFi lending bezpečný?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Je DeFi lending bezpečný a co se může doopravdy pokazit?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -1033,6 +1059,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "es-seguro-el-prestamo-defi",
+        title: "¿Es seguro el préstamo DeFi? Riesgos reales, con ejemplos",
+        description:
+          "Riesgos del préstamo DeFi para prestatarios y prestamistas: liquidación, errores, oráculos, mal colateral, deuda incobrable y retiros bloqueados.",
+        h1: "¿Es seguro el préstamo DeFi?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "¿Es seguro el préstamo DeFi y qué puede salir mal en realidad?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   hi: [
     {
@@ -1373,6 +1412,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "उधार लेने वाले के लिए Aave V3 और Aave V4 में क्या अंतर है?",
         readingMinutes: 15,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "kya-defi-lending-surakshit-hai",
+        title: "क्या DeFi लेंडिंग सुरक्षित है? असली जोखिम, उदाहरणों के साथ",
+        description:
+          "उधार लेने और देने वालों के लिए DeFi लेंडिंग के असली जोखिम: लिक्विडेशन, बग, ओरेकल, ख़राब कोलैटरल, डूबा हुआ कर्ज़ और अटके विड्रॉल, असली मामलों के साथ।",
+        h1: "क्या DeFi लेंडिंग सुरक्षित है?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "क्या DeFi लेंडिंग सुरक्षित है, और असल में क्या गलत हो सकता है?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -1720,6 +1772,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "ist-defi-lending-sicher",
+        title: "Ist DeFi-Lending sicher? Die echten Risiken mit Beispielen",
+        description:
+          "Risiken von DeFi-Lending für Kreditnehmer und Kreditgeber: Liquidation, Bugs, Orakel, schlechte Sicherheiten, Kreditausfälle und gesperrte Abhebungen.",
+        h1: "Ist DeFi-Lending sicher?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Ist DeFi-Lending sicher, und was kann wirklich schiefgehen?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   vi: [
     {
@@ -2061,6 +2126,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Aave V3 và Aave V4 khác nhau thế nào đối với người vay?",
         readingMinutes: 18,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "cho-vay-defi-co-an-toan-khong",
+        title: "Cho vay DeFi có an toàn không? Rủi ro thực, có ví dụ",
+        description:
+          "Rủi ro của cho vay DeFi với người vay và người cho vay: thanh lý, lỗi hợp đồng, oracle, tài sản thế chấp xấu, nợ xấu và rút tiền bị đóng băng.",
+        h1: "Cho vay DeFi có an toàn không?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Cho vay DeFi có an toàn không, và điều gì thực sự có thể xảy ra?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -2410,6 +2488,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "le-pret-defi-est-il-sur",
+        title: "Le prêt DeFi est-il sûr ? Les vrais risques, avec exemples",
+        description:
+          "Les risques du prêt DeFi pour emprunteurs et prêteurs : liquidation, bugs, oracles, mauvais collatéral, créances irrécouvrables et retraits bloqués.",
+        h1: "Le prêt DeFi est-il sûr ?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Le prêt DeFi est-il sûr, et que peut-il vraiment mal tourner ?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   pt: [
     {
@@ -2757,6 +2848,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "emprestimo-defi-e-seguro",
+        title: "Empréstimo em DeFi é seguro? Riscos reais, com exemplos",
+        description:
+          "Os riscos reais do empréstimo em DeFi para quem toma e quem empresta: liquidação, bugs, oráculos, garantia ruim, dívida incobrável e saques travados.",
+        h1: "O empréstimo em DeFi é seguro?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "O empréstimo em DeFi é seguro, e o que pode realmente dar errado?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   it: [
     {
@@ -3100,6 +3204,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Qual è la differenza tra Aave V3 e Aave V4 per chi prende in prestito?",
         readingMinutes: 15,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "il-prestito-defi-e-sicuro",
+        title: "Il prestito DeFi è sicuro? I rischi reali, con esempi",
+        description:
+          "I rischi reali del prestito DeFi per debitori e prestatori: liquidazione, bug, oracoli, collaterale debole, crediti inesigibili e prelievi bloccati.",
+        h1: "Il prestito DeFi è sicuro?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Il prestito DeFi è sicuro, e cosa può andare davvero storto?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -3446,6 +3563,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "czy-pozyczki-defi-sa-bezpieczne",
+        title: "Czy pożyczki DeFi są bezpieczne? Ryzyka i przykłady",
+        description:
+          "Ryzyka pożyczek DeFi dla pożyczkobiorców i pożyczkodawców: likwidacja, błędy, wyrocznie, złe zabezpieczenia, złe długi i wstrzymane wypłaty.",
+        h1: "Czy pożyczki DeFi są bezpieczne?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Czy pożyczki DeFi są bezpieczne i co tak naprawdę może pójść nie tak?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   tr: [
     {
@@ -3787,6 +3917,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Borç alan biri için Aave V3 ile Aave V4 arasındaki fark nedir?",
         readingMinutes: 12,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "defi-borc-verme-guvenli-mi",
+        title: "DeFi borç verme güvenli mi? Gerçek riskler ve örnekler",
+        description:
+          "DeFi'de borç alanlar ve verenler için gerçek riskler: likidasyon, hatalar, oracle'lar, kötü teminat, batık borç ve donan çekimler, gerçek vakalarla.",
+        h1: "DeFi borç verme güvenli mi?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "DeFi borç verme güvenli mi ve ters giden ne olabilir?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -4136,6 +4279,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "apakah-pinjaman-defi-aman",
+        title: "Apakah pinjaman DeFi aman? Risiko nyata beserta contohnya",
+        description:
+          "Risiko pinjaman DeFi bagi peminjam dan pemberi pinjaman: likuidasi, bug, oracle, jaminan buruk, utang macet, dan penarikan tertahan, dengan kasus nyata.",
+        h1: "Apakah pinjaman DeFi aman?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Apakah pinjaman DeFi aman, dan apa yang sebenarnya bisa salah?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   nl: [
     {
@@ -4479,6 +4635,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "is-defi-lending-veilig",
+        title: "Is DeFi lending veilig? De echte risico's, met voorbeelden",
+        description:
+          "De echte risico's van DeFi lending voor leners en uitleners: liquidatie, bugs, oracles, slecht onderpand, oninbare schuld en geblokkeerde opnames.",
+        h1: "Is DeFi lending veilig?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Is DeFi lending veilig, en wat kan er echt misgaan?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   ro: [
     {
@@ -4820,6 +4989,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Care este diferența dintre Aave V3 și Aave V4 pentru un debitor?",
         readingMinutes: 13,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "este-creditarea-defi-sigura",
+        title: "Este sigură creditarea DeFi? Riscurile reale, cu exemple",
+        description:
+          "Riscurile creditării DeFi pentru debitori și creditori: lichidare, bug-uri, oracole, garanții slabe, datorie neacoperită și retrageri blocate.",
+        h1: "Este sigură creditarea DeFi?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Este sigură creditarea DeFi și ce poate merge de fapt prost?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -5168,6 +5350,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "biztonsagos-e-a-defi-hitelezes",
+        title: "Biztonságos a DeFi hitelezés? Valódi kockázatok, példákkal",
+        description:
+          "A DeFi hitelezés kockázatai hitelfelvevőknek és hitelezőknek: likvidálás, hibák, orákulumok, rossz fedezet, behajthatatlan adósság, valós esetekkel.",
+        h1: "Biztonságos a DeFi hitelezés?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Biztonságos a DeFi hitelezés, és mi romolhat el valójában?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   hr: [
     {
@@ -5509,6 +5704,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Koja je razlika između Aave V3 i Aave V4 za dužnika?",
         readingMinutes: 13,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "je-li-defi-pozajmljivanje-sigurno",
+        title: "Je li DeFi pozajmljivanje sigurno? Rizici s primjerima",
+        description:
+          "Stvarni rizici DeFi pozajmljivanja za dužnike i zajmodavce: likvidacija, greške, orakli, loš kolateral, nenaplativi dug i zamrznuta povlačenja.",
+        h1: "Je li DeFi pozajmljivanje sigurno?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Je li DeFi pozajmljivanje sigurno i što sve može poći po zlu?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -5854,6 +6062,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "je-defi-posojanje-varno",
+        title: "Je posojanje v DeFi varno? Prava tveganja s primeri",
+        description:
+          "Tveganja posojanja v DeFi za posojilojemalce in posojilodajalce: likvidacija, hrošči, oraklji, slabo zavarovanje, neizterljiv dolg in zamrznjeni dvigi.",
+        h1: "Je posojanje v DeFi varno?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Je posojanje v DeFi varno in kaj se lahko dejansko zalomi?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   sr: [
     {
@@ -6197,6 +6418,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "da-li-je-defi-pozajmljivanje-bezbedno",
+        title: "Da li je DeFi pozajmljivanje bezbedno? Rizici, sa primerima",
+        description:
+          "Rizici DeFi pozajmljivanja za dužnike i zajmodavce: likvidacija, bagovi, orakli, loš kolateral, nenaplativ dug i zamrznuta povlačenja, sa primerima.",
+        h1: "Da li je DeFi pozajmljivanje bezbedno?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Da li je DeFi pozajmljivanje bezbedno i šta zapravo može da pođe naopako?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   sv: [
     {
@@ -6538,6 +6772,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Vad är skillnaden mellan Aave V3 och Aave V4 för en låntagare?",
         readingMinutes: 13,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "ar-defi-utlaning-saker",
+        title: "Är DeFi-utlåning säker? De verkliga riskerna med exempel",
+        description:
+          "De verkliga riskerna med DeFi-utlåning för låntagare och långivare: likvidation, buggar, orakel, dålig säkerhet, osäkra fordringar och låsta uttag.",
+        h1: "Är DeFi-utlåning säker?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Är DeFi-utlåning säker, och vad kan egentligen gå fel?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -6884,6 +7131,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "er-defi-udlaan-sikkert",
+        title: "Er DeFi-udlån sikkert? De reelle risici med eksempler",
+        description:
+          "De reelle risici ved DeFi-udlån for låntagere og långivere: likvidation, fejl, orakler, dårlig sikkerhed, dårlig gæld og låste hævninger.",
+        h1: "Er DeFi-udlån sikkert?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Er DeFi-udlån sikkert, og hvad kan der egentlig gå galt?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   nb: [
     {
@@ -7225,6 +7485,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Hva er forskjellen mellom Aave V3 og Aave V4 for en låntaker?",
         readingMinutes: 13,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "er-defi-utlan-trygt",
+        title: "Er DeFi-utlån trygt? Reelle risikoer, med eksempler",
+        description:
+          "De reelle risikoene ved DeFi-utlån for låntakere og långivere: likvidasjon, feil, orakler, dårlig sikkerhet, tapsført gjeld og låste uttak.",
+        h1: "Er DeFi-utlån trygt?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Er DeFi-utlån trygt, og hva kan egentlig gå galt?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -7573,6 +7846,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "ligtas-ba-ang-defi-lending",
+        title: "Ligtas ba ang DeFi lending? Mga totoong panganib",
+        description:
+          "Mga totoong panganib ng DeFi lending sa borrower at lender: liquidation, bug, oracle, masamang collateral, bad debt at naantalang withdrawal, may mga kaso.",
+        h1: "Ligtas ba ang DeFi lending?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Ligtas ba ang DeFi lending, at ano talaga ang puwedeng magkamali?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   bg: [
     {
@@ -7914,6 +8200,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Каква е разликата между Aave V3 и Aave V4 за кредитополучателя?",
         readingMinutes: 14,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "bezopasno-li-e-defi-kreditiraneto",
+        title: "Безопасно ли е DeFi кредитирането? Рисковете с примери",
+        description:
+          "Рисковете на DeFi кредитирането за кредитополучатели и кредитори: ликвидация, бъгове, оракули, лошо обезпечение, лош дълг и замразени тегления.",
+        h1: "Безопасно ли е DeFi кредитирането?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Безопасно ли е DeFi кредитирането и какво всъщност може да се обърка?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -8259,6 +8558,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-04",
       },
     },
+    {
+      meta: {
+        slug: "bezopasno-li-defi-kreditovanie",
+        title: "Безопасно ли DeFi-кредитование? Риски и примеры",
+        description:
+          "Риски DeFi-кредитования для заёмщиков и кредиторов: ликвидация, баги, оракулы, плохой залог, безнадёжный долг и замороженный вывод, на реальных случаях.",
+        h1: "Безопасно ли DeFi-кредитование?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Безопасно ли DeFi-кредитование и что на самом деле может пойти не так?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
+      },
+    },
   ],
   uk: [
     {
@@ -8600,6 +8912,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Яка різниця між Aave V3 і Aave V4 для позичальника?",
         readingMinutes: 13,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "chy-bezpechne-defi-kredytuvannia",
+        title: "Чи безпечне DeFi-кредитування? Реальні ризики на прикладах",
+        description:
+          "Реальні ризики DeFi-кредитування для позичальників і кредиторів: ліквідація, баги, оракули, погана застава, безнадійний борг і заблоковані виведення.",
+        h1: "Чи безпечне DeFi-кредитування?",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Чи безпечне DeFi-кредитування і що насправді може піти не так?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],
@@ -8949,6 +9274,19 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Ποια είναι η διαφορά ανάμεσα στο Aave V3 και στο Aave V4 για έναν δανειολήπτη?",
         readingMinutes: 15,
         figuresAsOf: "2026-11-04",
+      },
+    },
+    {
+      meta: {
+        slug: "einai-asfalis-o-defi-danismos",
+        title: "Είναι ασφαλής ο δανεισμός DeFi; Οι κίνδυνοι με παραδείγματα",
+        description:
+          "Οι κίνδυνοι του δανεισμού DeFi για δανειολήπτες και δανειστές: ρευστοποίηση, bugs, oracles, κακή εξασφάλιση, επισφαλές χρέος, με πραγματικές περιπτώσεις.",
+        h1: "Είναι ασφαλής ο δανεισμός DeFi;",
+        publishedAt: "2026-11-06",
+        primaryQuestion: "Είναι ασφαλής ο δανεισμός DeFi και τι μπορεί πραγματικά να πάει στραβά?",
+        readingMinutes: 10,
+        figuresAsOf: "2026-11-06",
       },
     },
   ],

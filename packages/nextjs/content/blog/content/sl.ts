@@ -7,6 +7,7 @@ import AaveAlertsDoNotDisturb from "~~/content/blog/sl/aave-opozorila-v-nacinu-n
 import AaveV4VsV3 from "~~/content/blog/sl/aave-v4-vs-v3-razlike.mdx";
 import AaveVsMorpho from "~~/content/blog/sl/aave-vs-morpho-primerjava.mdx";
 import StablecoinDepegAave from "~~/content/blog/sl/depeg-stablecoina-na-aave.mdx";
+import IsDefiLendingSafe from "~~/content/blog/sl/je-defi-posojanje-varno.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/sl/kako-deluje-likvidacija-na-aave.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/sl/kako-deluje-likvidacija-na-morpho.mdx";
 import AvoidAaveLiquidation from "~~/content/blog/sl/kako-se-izogniti-likvidaciji-na-aave.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-posojila-s-fiksno-obrestno-mero": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-primerjava": AaveVsMorpho,
   "aave-v4-vs-v3-razlike": AaveV4VsV3,
+  "je-defi-posojanje-varno": IsDefiLendingSafe,
 };

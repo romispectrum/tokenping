@@ -13,6 +13,7 @@ import AaveVsMorpho from "~~/content/blog/de/aave-vs-morpho-vergleich.mdx";
 import AaveInterestRates from "~~/content/blog/de/aave-zinssaetze.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/de/auf-aave-oder-morpho-liquidiert-was-jetzt.mdx";
 import ShortFiatWithAave from "~~/content/blog/de/fiat-short-mit-aave-kredit.mdx";
+import IsDefiLendingSafe from "~~/content/blog/de/ist-defi-lending-sicher.mdx";
 import CryptoBackedLoans from "~~/content/blog/de/krypto-besicherte-kredite.mdx";
 import MorphoHealthFactor from "~~/content/blog/de/morpho-health-factor-erklaert.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/de/morpho-midnight-festzinskredite.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-festzinskredite": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-vergleich": AaveVsMorpho,
   "aave-v4-vs-v3-unterschiede": AaveV4VsV3,
+  "ist-defi-lending-sicher": IsDefiLendingSafe,
 };

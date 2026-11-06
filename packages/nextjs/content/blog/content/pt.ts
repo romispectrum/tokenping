@@ -10,6 +10,7 @@ import HowMorphoLiquidationWorks from "~~/content/blog/pt/como-funciona-a-liquid
 import AaveHealthFactorAlertSetup from "~~/content/blog/pt/configurar-alertas-fator-de-saude-aave.mdx";
 import StablecoinDepegAave from "~~/content/blog/pt/depeg-de-stablecoin-aave.mdx";
 import AaveEMode from "~~/content/blog/pt/e-mode-aave.mdx";
+import IsDefiLendingSafe from "~~/content/blog/pt/emprestimo-defi-e-seguro.mdx";
 import CryptoBackedLoans from "~~/content/blog/pt/emprestimos-com-garantia-em-cripto.mdx";
 import AaveMarketWindDown from "~~/content/blog/pt/encerramento-de-mercado-aave.mdx";
 import AvoidAaveLiquidation from "~~/content/blog/pt/evitar-liquidacao-aave.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-emprestimos-taxa-fixa": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-comparacao": AaveVsMorpho,
   "aave-v4-vs-v3-diferencas": AaveV4VsV3,
+  "emprestimo-defi-e-seguro": IsDefiLendingSafe,
 };

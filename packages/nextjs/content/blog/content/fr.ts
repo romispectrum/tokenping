@@ -15,6 +15,7 @@ import MorphoHealthFactor from "~~/content/blog/fr/facteur-de-sante-morpho.mdx";
 import AaveMarketWindDown from "~~/content/blog/fr/fermeture-marche-aave.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/fr/fonctionnement-liquidation-aave.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/fr/fonctionnement-liquidation-morpho.mdx";
+import IsDefiLendingSafe from "~~/content/blog/fr/le-pret-defi-est-il-sur.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/fr/liquide-sur-aave-ou-morpho-que-faire.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/fr/morpho-midnight-prets-taux-fixe.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/fr/outils-alertes-liquidation-aave.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-prets-taux-fixe": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-comparatif": AaveVsMorpho,
   "aave-v4-vs-v3-differences": AaveV4VsV3,
+  "le-pret-defi-est-il-sur": IsDefiLendingSafe,
 };

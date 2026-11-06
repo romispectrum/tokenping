@@ -13,6 +13,7 @@ import AvoidAaveLiquidation from "~~/content/blog/avoid-aave-liquidation.mdx";
 import CryptoBackedLoans from "~~/content/blog/crypto-backed-loans.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/how-aave-liquidation-works.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/how-morpho-liquidation-works.mdx";
+import IsDefiLendingSafe from "~~/content/blog/is-defi-lending-safe.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/liquidated-on-aave-or-morpho-what-now.mdx";
 import MorphoHealthFactor from "~~/content/blog/morpho-health-factor.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/morpho-midnight-fixed-rate-loans.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-fixed-rate-loans": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho": AaveVsMorpho,
   "aave-v4-vs-v3": AaveV4VsV3,
+  "is-defi-lending-safe": IsDefiLendingSafe,
 };

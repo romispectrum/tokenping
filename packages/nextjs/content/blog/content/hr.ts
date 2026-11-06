@@ -9,6 +9,7 @@ import AaveVsMorpho from "~~/content/blog/hr/aave-vs-morpho-usporedba.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/hr/alati-za-aave-upozorenja-o-likvidaciji.mdx";
 import StablecoinDepegAave from "~~/content/blog/hr/depeg-stablecoina-na-aaveu.mdx";
 import AaveMarketWindDown from "~~/content/blog/hr/gasenje-aave-trzista.mdx";
+import IsDefiLendingSafe from "~~/content/blog/hr/je-li-defi-pozajmljivanje-sigurno.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/hr/kako-funkcionira-likvidacija-na-aaveu.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/hr/kako-funkcionira-likvidacija-na-morphu.mdx";
 import AvoidAaveLiquidation from "~~/content/blog/hr/kako-izbjeci-likvidaciju-na-aaveu.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-zajmovi-s-fiksnom-kamatom": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-usporedba": AaveVsMorpho,
   "aave-v4-vs-v3-razlike": AaveV4VsV3,
+  "je-li-defi-pozajmljivanje-sigurno": IsDefiLendingSafe,
 };

@@ -2,6 +2,7 @@
 import AaveV4VsV3 from "~~/content/blog/id/aave-v4-vs-v3-perbedaan.mdx";
 import AaveVsMorpho from "~~/content/blog/id/aave-vs-morpho-perbandingan.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/id/alat-peringatan-likuidasi-aave.mdx";
+import IsDefiLendingSafe from "~~/content/blog/id/apakah-pinjaman-defi-aman.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/id/cara-kerja-likuidasi-aave.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/id/cara-kerja-likuidasi-morpho.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/id/cara-mengatur-peringatan-faktor-kesehatan-aave.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "pinjaman-bunga-tetap-morpho-midnight": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-perbandingan": AaveVsMorpho,
   "aave-v4-vs-v3-perbedaan": AaveV4VsV3,
+  "apakah-pinjaman-defi-aman": IsDefiLendingSafe,
 };

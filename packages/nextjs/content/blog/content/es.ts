@@ -12,6 +12,7 @@ import HowMorphoLiquidationWorks from "~~/content/blog/es/como-funciona-la-liqui
 import AaveHealthFactorAlertSetup from "~~/content/blog/es/configurar-alertas-factor-de-salud-aave.mdx";
 import StablecoinDepegAave from "~~/content/blog/es/depeg-de-stablecoin-y-aave.mdx";
 import AaveEMode from "~~/content/blog/es/e-mode-de-aave.mdx";
+import IsDefiLendingSafe from "~~/content/blog/es/es-seguro-el-prestamo-defi.mdx";
 import AaveHealthFactor from "~~/content/blog/es/factor-de-salud-aave.mdx";
 import MorphoHealthFactor from "~~/content/blog/es/factor-de-salud-morpho.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/es/factor-de-salud-seguro-aave.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-prestamos-a-tasa-fija": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-comparativa": AaveVsMorpho,
   "aave-v4-vs-v3-diferencias": AaveV4VsV3,
+  "es-seguro-el-prestamo-defi": IsDefiLendingSafe,
 };

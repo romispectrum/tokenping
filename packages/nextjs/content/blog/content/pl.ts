@@ -5,6 +5,7 @@ import AaveAlertsDoNotDisturb from "~~/content/blog/pl/alerty-aave-w-trybie-nie-
 import AaveHealthFactorAlertSetup from "~~/content/blog/pl/alerty-wspolczynnika-zdrowia-aave-konfiguracja.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/pl/bezpieczny-wspolczynnik-zdrowia-aave.mdx";
 import AaveLiquidationPrice from "~~/content/blog/pl/cena-likwidacji-aave.mdx";
+import IsDefiLendingSafe from "~~/content/blog/pl/czy-pozyczki-defi-sa-bezpieczne.mdx";
 import StablecoinDepegAave from "~~/content/blog/pl/depeg-stablecoina-na-aave.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/pl/dlaczego-spadl-wspolczynnik-zdrowia-aave.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/pl/dlaczego-wyplata-lub-pozyczka-na-aave-nie-dziala.mdx";
@@ -57,4 +58,5 @@ export const POST_CONTENT: PostContent = {
   "morpho-midnight-pozyczki-o-stalym-oprocentowaniu": MorphoMidnightFixedRateLoans,
   "aave-vs-morpho-porownanie": AaveVsMorpho,
   "aave-v4-vs-v3-roznice": AaveV4VsV3,
+  "czy-pozyczki-defi-sa-bezpieczne": IsDefiLendingSafe,
 };
