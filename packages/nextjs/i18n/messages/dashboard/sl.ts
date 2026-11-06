@@ -26,8 +26,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Koliko stanejo opozorila in kako pogosto preverjamo",
     alertsCost: (channels, paymentChain) =>
       `Če želiš prejeti sporočilo, ko health factor na trgu pade pod prag, ki ga izbereš, odkleni opozorila s plačilom v USDC${paymentChain ? ` na omrežju ${paymentChain}` : ""}. Kanali: ${channels}. Trenutno ceno vidiš, preden plačaš.`,
-    checks: minutes =>
-      `Tokenping preverja ${everyMinutes(minutes)}. Dokler je health factor pod tvojim pragom, vsako preverjanje pošlje novo sporočilo v vsak izbrani kanal.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping preverja ${everyMinutes(minutes)}. Dokler je health factor pod tvojim pragom, dobiš sporočilo vsakih ${repeatMinutes} minut v vsak izbrani kanal.`,
     guideThreshold: "Kako izbrati prag",
     guideAlerts: "Kako delujejo opozorila",
     morphoDashboard: "Si izposojaš v Morpho? Odpri nadzorno ploščo Morpho",

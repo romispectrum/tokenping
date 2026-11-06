@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Pozice a upozornění na health factor na Morpho Blue a Midnight",
     intro: networks =>
       `Vaše vypůjčené pozice v trzích, které uvádí aplikace Morpho, na sítích ${networks}: půjčky s variabilní sazbou (Morpho Blue) a s pevnou sazbou (Morpho Midnight). Health factor se čte přímo z blockchainu.`,
-    checks: minutes =>
-      `Upozornění kontrolujeme ${plural("cs", minutes, { one: "každou minutu", few: `každé ${minutes} minuty`, other: `každých ${minutes} minut` })}. Půjčka s pevnou sazbou navíc dostane připomínku 7 dní a 1 den před splatností a po splatnosti upozornění při každé kontrole, dokud na ní zbývá dluh.`,
+    checks: (minutes, repeatMinutes) =>
+      `Upozornění kontrolujeme ${plural("cs", minutes, { one: "každou minutu", few: `každé ${minutes} minuty`, other: `každých ${minutes} minut` })}. Půjčka s pevnou sazbou navíc dostane připomínku 7 dní a 1 den před splatností a po splatnosti upozornění každých ${repeatMinutes} minut, dokud na ní zbývá dluh.`,
     access: "Jedna platba za přístup pokrývá upozornění na Aave i na Morpho.",
     notAffiliated: "Tokenping není s Morpho nijak spojený.",
     guideHealthFactor: "Jak funguje health factor na Morpho",

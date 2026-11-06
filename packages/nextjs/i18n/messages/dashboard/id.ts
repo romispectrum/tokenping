@@ -16,8 +16,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Biaya peringatan dan seberapa sering kami memeriksa",
     alertsCost: (channels, paymentChain) =>
       `Untuk menerima pesan lewat ${channels} saat faktor kesehatan suatu pasar turun di bawah ambang batas pilihan Anda, buka peringatan dengan pembayaran USDC${paymentChain ? ` di jaringan ${paymentChain}` : ""}. Harga saat ini ditampilkan sebelum Anda membayar.`,
-    checks: minutes =>
-      `Tokenping memeriksa setiap ${minutes} menit. Selama faktor kesehatan tetap di bawah ambang batas Anda, setiap pemeriksaan mengirim pesan lagi ke setiap saluran yang Anda pilih.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping memeriksa setiap ${minutes} menit. Selama faktor kesehatan tetap di bawah ambang batas Anda, Anda menerima pesan setiap ${repeatMinutes} menit di setiap saluran yang Anda pilih.`,
     guideThreshold: "Cara memilih ambang batas",
     guideAlerts: "Cara kerja peringatan",
     morphoDashboard: "Meminjam di Morpho? Buka dasbor Morpho",

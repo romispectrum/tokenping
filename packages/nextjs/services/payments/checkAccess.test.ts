@@ -1,4 +1,4 @@
-import type { Chain, Transport } from "viem";
+import { type Chain, type Transport, http } from "viem";
 import { arbitrum, bsc, hardhat, mainnet } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   readContract: vi.fn(),
   createPublicClient: vi.fn(),
   getFallbackTransport: vi.fn(),
+  getConfiguredTransport: vi.fn(),
 }));
 
 // Only the client is mocked: the transport is the real one, and building it sends no request.
@@ -31,7 +32,11 @@ vi.mock("viem", async importOriginal => ({
 vi.mock("~~/utils/rpc", async importOriginal => {
   const rpc = await importOriginal<typeof import("~~/utils/rpc")>();
   mocks.getFallbackTransport.mockImplementation(rpc.getFallbackTransport);
-  return { ...rpc, getFallbackTransport: mocks.getFallbackTransport };
+  return {
+    ...rpc,
+    getFallbackTransport: mocks.getFallbackTransport,
+    getConfiguredTransport: mocks.getConfiguredTransport,
+  };
 });
 
 type ConfigOverrides = {
@@ -69,6 +74,7 @@ beforeEach(() => {
   mocks.readContract.mockReset().mockResolvedValue(true);
   mocks.createPublicClient.mockReset().mockImplementation(() => ({ readContract: mocks.readContract }));
   mocks.getFallbackTransport.mockClear();
+  mocks.getConfiguredTransport.mockReset();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 
@@ -91,6 +97,17 @@ describe("isAccessActive", () => {
       functionName: "isActive",
       args: [USER],
     });
+  });
+
+  it("asks only the app's own RPC when it has one, never a public endpoint", async () => {
+    const own = http("https://arb-mainnet.example/v2/own-key");
+    mocks.getConfiguredTransport.mockReturnValueOnce(own);
+    const isAccessActive = await loadIsAccessActive();
+    await isAccessActive(USER);
+
+    expect(mocks.getConfiguredTransport.mock.calls).toEqual([[arbitrum.id]]);
+    expect(clientConfig().transport).toBe(own);
+    expect(mocks.getFallbackTransport).not.toHaveBeenCalled();
   });
 
   it("passes the user address through unchanged", async () => {

@@ -224,6 +224,29 @@ describe("parseConfigInput", () => {
     expect(parseConfigInput(input)).toStrictEqual({ error });
   });
 
+  it("keeps a recipient of a channel not selected up to the same length, and drops a longer one", () => {
+    const value = (input: ConfigInput) => {
+      const result = parseConfigInput(input);
+      return "value" in result ? result.value : null;
+    };
+    expect(value({ email: "a".repeat(254), signalRecipient: "b".repeat(64) })).toMatchObject({
+      email: "a".repeat(254),
+      signalRecipient: "b".repeat(64),
+    });
+    expect(value({ email: "a".repeat(255), signalRecipient: "b".repeat(65) })).toMatchObject({
+      email: null,
+      signalRecipient: null,
+    });
+  });
+
+  it("rejects a repeated service", () => {
+    expect(parseConfigInput({ services: ["email", "email"], email: "a@b.co" })).toEqual({ error: expect.any(String) });
+  });
+
+  it.each(["true", 1, 0, {}])("rejects an enabled of %j", enabled => {
+    expect(parseConfigInput({ enabled })).toEqual({ error: "Invalid enabled: expected true or false" });
+  });
+
   it("accepts a selected email of exactly 254 characters and a Signal username of exactly 64", () => {
     const email = `${"a".repeat(249)}@b.co`;
     const signalRecipient = `alice.${"4".repeat(58)}`;

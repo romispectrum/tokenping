@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getMorphoChain } from "~~/config/morpho";
 import type { MorphoClient } from "~~/services/morpho/client";
 import { readBlueHealth, readMidnightHealth } from "~~/services/morpho/health";
@@ -116,6 +116,11 @@ describe("morphoNotices", () => {
 });
 
 describe("readMorphoPositions", () => {
+  // The first pass of readWithinBudget's rotation, so each queue starts at its first alert.
+  beforeEach(() => {
+    vi.useFakeTimers({ now: 0, toFake: ["Date"] });
+  });
+
   const alert = (chainId: number, user: string, params: BlueMarketParams | MidnightMarketParams = BLUE) =>
     ({
       row: { user_id: user },
@@ -168,7 +173,7 @@ describe("readMorphoPositions", () => {
   });
 
   it("stops at the deadline: reads in flight are TIMED_OUT and the rest never start", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ now: 0 });
     vi.mocked(readBlueHealth)
       .mockResolvedValueOnce(READING)
       .mockImplementation(() => new Promise(() => undefined));

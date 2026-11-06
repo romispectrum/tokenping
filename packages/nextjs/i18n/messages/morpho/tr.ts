@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Morpho Blue ve Midnight pozisyonları ve sağlık faktörü uyarıları",
     intro: networks =>
       `Morpho uygulamasının listelediği piyasalardaki borç pozisyonlarınız, şu ağlarda: ${networks}. Değişken faizli krediler (Morpho Blue) ve sabit faizli krediler (Morpho Midnight). Sağlık faktörleri zincirden okunur.`,
-    checks: minutes =>
-      `Uyarılar her ${minutes} dakikada bir kontrol edilir. Sabit faizli bir kredi için vade sonundan 7 gün ve 1 gün önce hatırlatma da gönderilir; vade sonundan sonra ise borç kaldığı sürece her kontrolde bir uyarı gönderilir.`,
+    checks: (minutes, repeatMinutes) =>
+      `Uyarılar her ${minutes} dakikada bir kontrol edilir. Sabit faizli bir kredi için vade sonundan 7 gün ve 1 gün önce hatırlatma da gönderilir; vade sonundan sonra ise borç kaldığı sürece ${repeatMinutes} dakikada bir uyarı gönderilir.`,
     access: "Tek bir erişim ödemesi Aave ve Morpho uyarılarınızı birlikte kapsar.",
     notAffiliated: "Tokenping'in Morpho ile bağlantısı yoktur.",
     guideHealthFactor: "Morpho'da sağlık faktörü nasıl çalışır",

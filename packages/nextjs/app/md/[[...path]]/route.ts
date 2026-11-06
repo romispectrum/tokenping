@@ -1,7 +1,13 @@
 import type { NextRequest } from "next/server";
 import { LOCALES } from "~~/i18n/locales";
 import { routePath } from "~~/i18n/routes";
-import { MARKDOWN_CONTENT_TYPE, acceptsMarkdown, estimateTokens, htmlToMarkdown } from "~~/utils/markdown";
+import {
+  MARKDOWN_CONTENT_TYPE,
+  acceptsMarkdown,
+  convertedPages,
+  estimateTokens,
+  htmlToMarkdown,
+} from "~~/utils/markdown";
 import { CONTENT_SIGNAL } from "~~/utils/robots";
 import { SITE_URL } from "~~/utils/seo";
 import { sitemapEntries } from "~~/utils/sitemap";
@@ -28,6 +34,9 @@ const HOME_LINKS = new Map(
 // The CDN keeps a page's markdown as long as the hourly home page and guides keep their HTML. Vercel's cache key
 // includes Accept, and Vary says so to any other cache.
 const CACHE_CONTROL = "public, s-maxage=3600, stale-while-revalidate=86400";
+// A new query string or Accept value is a CDN miss with the same output, so the conversion itself is kept for as long:
+// such a request costs this route, not another fetch of the page and a parse of its HTML.
+const CONVERTED_MS = 3_600_000;
 const FETCH_TIMEOUT_MS = 10_000;
 
 type MarkdownRouteContext = {
@@ -46,26 +55,36 @@ const TRUSTED_HOSTNAMES = new Set(["localhost", new URL(SITE_URL).hostname]);
  */
 const isTrustedOrigin = ({ hostname }: URL) => process.env.VERCEL === "1" || TRUSTED_HOSTNAMES.has(hostname);
 
+/** The page's markdown, converted at most once per CONVERTED_MS on this instance. Throws when it cannot be converted. */
+const pageMarkdown = async (path: string, canonical: string, origin: string) => {
+  const converted = convertedPages.get(path);
+  if (converted && converted.expiresAt > Date.now()) return converted.markdown;
+
+  // Accept: text/html, so the rewrite does not send this fetch back here.
+  const page = await fetch(new URL(path, origin), {
+    headers: { Accept: "text/html" },
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!page.ok || !page.headers.get("content-type")?.startsWith("text/html")) {
+    throw new Error(`${page.status} ${page.headers.get("content-type")}`);
+  }
+  const markdown = htmlToMarkdown(await page.text(), canonical);
+  if (markdown === undefined) throw new Error("no <main> in the page");
+  convertedPages.set(path, { markdown, expiresAt: Date.now() + CONVERTED_MS });
+  return markdown;
+};
+
 export const GET = async (request: NextRequest, { params }: MarkdownRouteContext) => {
   if (!acceptsMarkdown(request.headers.get("accept"))) return notFound();
   const path = `/${(await params).path?.join("/") ?? ""}`;
   const canonical = CANONICAL_URLS.get(path);
   if (!canonical || !isTrustedOrigin(request.nextUrl)) return notFound();
 
-  // Accept: text/html, so the rewrite does not send this fetch back here.
-  let markdown: string | undefined;
+  let markdown: string;
   try {
-    const page = await fetch(new URL(path, request.nextUrl.origin), {
-      headers: { Accept: "text/html" },
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!page.ok || !page.headers.get("content-type")?.startsWith("text/html")) {
-      throw new Error(`${page.status} ${page.headers.get("content-type")}`);
-    }
-    markdown = htmlToMarkdown(await page.text(), canonical);
-    if (markdown === undefined) throw new Error("no <main> in the page");
+    markdown = await pageMarkdown(path, canonical, request.nextUrl.origin);
   } catch (error) {
     console.error(`GET ${path} as markdown: failed`, error);
     return new Response(null, { status: 502 });

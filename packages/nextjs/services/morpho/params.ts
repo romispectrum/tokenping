@@ -4,8 +4,11 @@ import {
   type ContractFunctionParameters,
   ContractFunctionRevertedError,
   type Hex,
+  encodeAbiParameters,
   getAddress,
   isAddressEqual,
+  keccak256,
+  parseAbiParameters,
   zeroAddress,
 } from "viem";
 import type { MorphoChain } from "~~/config/morpho";
@@ -29,6 +32,8 @@ import type {
 
 // A market's fixed parameters, read from the chain rather than taken from Morpho's API: the API only says which
 // markets are listed and which pre-liquidation contracts exist, and each contract is checked against Morpho's factory.
+// An RPC can be a public one, and what is read here is stored and trusted on every later check, so a Blue market's
+// parameters are checked against its id, which is their hash, and a Midnight market's against the chain and contract.
 
 type Result<T> = { status: "success"; result: T } | { status: "failure"; error: Error };
 
@@ -52,9 +57,15 @@ const readTokens = async (client: MorphoClient, addresses: readonly Address[]): 
   return tokens.every(token => token !== null) ? (tokens as MorphoToken[]) : null;
 };
 
+const MARKET_PARAMS = parseAbiParameters("address, address, address, address, uint256");
+
+/** The most pre-liquidation contracts kept for one alert. */
+export const MAX_PRE_LIQUIDATIONS = 500;
+
 /**
  * A Morpho Blue market's parameters, with the pre-liquidation contracts among `candidates` that Morpho's factory
- * created for this very market. Null when the market does not exist or cannot hold a borrow (an idle market).
+ * created for this very market. Null when the market does not exist or cannot hold a borrow (an idle market), when the
+ * answer is not this market's, or when a factory check could not be read (a contract must not vanish on an RPC error).
  */
 export const readBlueMarketParams = async (
   client: MorphoClient,
@@ -85,12 +96,15 @@ export const readBlueMarketParams = async (
   const [loanToken, collateralToken, oracle, irm, lltv] = params;
   if (isAddressEqual(loanToken, zeroAddress) || isAddressEqual(collateralToken, zeroAddress) || lltv === 0n)
     return null;
+  const id = keccak256(encodeAbiParameters(MARKET_PARAMS, [loanToken, collateralToken, oracle, irm, lltv]));
+  if (id.toLowerCase() !== marketId.toLowerCase()) return null;
+  if (candidates.some((_, index) => preResults[index * 3].status !== "success")) return null;
 
   const preLiquidations: BluePreLiquidation[] = candidates.flatMap((address, index) => {
     const isFromFactory = ok<boolean>(preResults[index * 3]);
-    const id = ok<Hex>(preResults[index * 3 + 1]);
+    const preMarketId = ok<Hex>(preResults[index * 3 + 1]);
     const preParams = ok<{ preLltv: bigint; preLiquidationOracle: Address }>(preResults[index * 3 + 2]);
-    return isFromFactory && id?.toLowerCase() === marketId.toLowerCase() && preParams
+    return isFromFactory && preMarketId?.toLowerCase() === marketId.toLowerCase() && preParams
       ? [{ address, preLltv: preParams.preLltv.toString(), oracle: preParams.preLiquidationOracle }]
       : [];
   });
@@ -109,12 +123,17 @@ export const readBlueMarketParams = async (
 };
 
 type MidnightMarketStruct = {
+  chainId: bigint;
+  midnight: Address;
   loanToken: Address;
   collateralParams: readonly { token: Address; lltv: bigint; oracle: Address }[];
   maturity: bigint;
 };
 
-/** A Morpho Midnight market's parameters; null when the market does not exist on this chain's Midnight. */
+/**
+ * A Morpho Midnight market's parameters; null when the market does not exist on this chain's Midnight. How an id is
+ * derived is not public, so the struct's own chain and contract are what ties the answer to this market.
+ */
 export const readMidnightMarketParams = async (
   client: MorphoClient,
   chain: MorphoChain,
@@ -135,6 +154,7 @@ export const readMidnightMarketParams = async (
     if (error instanceof BaseError && error.walk(cause => cause instanceof ContractFunctionRevertedError)) return null;
     throw error;
   }
+  if (market.chainId !== BigInt(chain.chain.id) || !isAddressEqual(market.midnight, chain.midnight)) return null;
   const tokens = await readTokens(client, [market.loanToken, ...market.collateralParams.map(({ token }) => token)]);
   if (!tokens) return null;
   return {
@@ -164,16 +184,16 @@ export const readListedMarketParams = async (
   const listing = await fetchMorphoListing(protocol, chain.chain.id, marketId, fetchImpl);
   if (!listing?.listed) return null;
   return protocol === "morpho-blue"
-    ? readBlueMarketParams(client, chain, marketId, listing.preLiquidations)
+    ? readBlueMarketParams(client, chain, marketId, listing.preLiquidations.slice(0, MAX_PRE_LIQUIDATIONS))
     : readMidnightMarketParams(client, chain, marketId);
 };
 
 /**
  * A saved alert's parameters brought up to date. Only a Blue market's pre-liquidation contracts can change (anyone can
- * create one with Morpho's factory after the alert was saved); everything else is fixed when the market is created. The
- * stored contracts are checked again with the API's, so an API answer that leaves one out never drops it. Keeps
- * `stored` when the API or the chain cannot answer, so editing an alert never depends on them, and a market delisted
- * since keeps its alert.
+ * create one with Morpho's factory after the alert was saved); everything else is fixed when the market is created, so
+ * it stays as stored. The stored contracts are checked again with the API's, so an API answer that leaves one out never
+ * drops it, and they come first when the list is cut at MAX_PRE_LIQUIDATIONS. Keeps `stored` when the API or the chain
+ * cannot answer, so editing an alert never depends on them, and a market delisted since keeps its alert.
  */
 export const refreshMarketParams = async (
   client: MorphoClient,
@@ -189,7 +209,8 @@ export const refreshMarketParams = async (
     const candidates = [
       ...new Set([...stored.preLiquidations.map(({ address }) => address), ...listing.preLiquidations].map(getAddress)),
     ];
-    return (await readBlueMarketParams(client, chain, marketId, candidates)) ?? stored;
+    const fresh = await readBlueMarketParams(client, chain, marketId, candidates.slice(0, MAX_PRE_LIQUIDATIONS));
+    return fresh ? { ...stored, preLiquidations: fresh.preLiquidations } : stored;
   } catch (error) {
     console.error("refreshMarketParams: kept the stored parameters", error);
     return stored;

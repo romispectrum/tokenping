@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Morpho Blue और Midnight पोज़िशन और हेल्थ फ़ैक्टर अलर्ट",
     intro: networks =>
       `${networks} पर, Morpho ऐप में सूचीबद्ध मार्केट में आपकी उधार पोज़िशन: वेरिएबल रेट लोन (Morpho Blue) और फ़िक्स्ड रेट लोन (Morpho Midnight)। हेल्थ फ़ैक्टर सीधे चेन से पढ़े जाते हैं।`,
-    checks: minutes =>
-      `अलर्ट हर ${plural("hi", minutes, { one: "मिनट", other: `${minutes} मिनट` })} जाँचे जाते हैं। फ़िक्स्ड रेट लोन को मैच्योरिटी से 7 दिन और 1 दिन पहले रिमाइंडर भी मिलता है, और मैच्योरिटी के बाद जब तक कर्ज़ बाकी है, हर जाँच पर एक अलर्ट।`,
+    checks: (minutes, repeatMinutes) =>
+      `अलर्ट हर ${plural("hi", minutes, { one: "मिनट", other: `${minutes} मिनट` })} जाँचे जाते हैं। फ़िक्स्ड रेट लोन को मैच्योरिटी से 7 दिन और 1 दिन पहले रिमाइंडर भी मिलता है, और मैच्योरिटी के बाद जब तक कर्ज़ बाकी है, हर ${repeatMinutes} मिनट में एक अलर्ट।`,
     access: "एक्सेस का एक भुगतान आपके Aave और Morpho, दोनों के अलर्ट कवर करता है।",
     notAffiliated: "Tokenping का Morpho से कोई संबंध नहीं है।",
     guideHealthFactor: "Morpho का हेल्थ फ़ैक्टर कैसे काम करता है",

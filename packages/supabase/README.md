@@ -53,6 +53,7 @@ database answer with a generic error (500, or 502 for the cron run) and the serv
 | --------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | `notification_configs`            | One alert per wallet, chain and market: channels, threshold, recipients, language per channel  | `PUT` and `DELETE /api/notifications/config`              |
 | `notification_maturity_reminders` | The reminders sent before a Morpho Midnight market matures, one per alert, kind and maturity   | The cron                                                  |
+| `notification_alert_sends`        | When each alert last reached each channel, for the 15-minute repeat limit                      | The cron                                                  |
 | `telegram_chats`                  | The chat each Telegram username opened by pressing Start in the bot                            | `POST /api/telegram/webhook`, and the cron on a dead chat |
 | `notification_test_sends`         | The last test message per wallet and channel, for the one-per-15-minutes limit                 | `POST /api/notifications/test`                            |
 | `auth_nonces`                     | Sign-in with Ethereum nonces, valid five minutes, deleted when used                            | `POST /api/auth/nonce` and `POST /api/auth/verify`        |
@@ -92,6 +93,8 @@ Every migration in order:
 | `20261029000000` | `allow_hindi_alert_locale`                        | Lets `locale`, `email_locale`, `signal_locale` and `telegram_locale` be `hi` (Hindi) as well as `en`, `cs` and `es`.                                                                                                                                         |
 | `20261029120000` | `allow_german_vietnamese_alert_locale`            | Lets `locale`, `email_locale`, `signal_locale` and `telegram_locale` be `de` (German) and `vi` (Vietnamese) too.                                                                                                                                             |
 | `20261102000000` | `allow_all_planned_alert_locales`                 | Lets the four language columns hold any of the 31 planned site languages (`fr`, `pt`, `it` ... `ko`, `zh`), so no later language needs its own migration.                                                                                                    |
+| `20261106000000` | `create_notification_alert_sends`                 | Creates `notification_alert_sends`, service role only: when each alert last reached each channel. |
+| `20261106010000` | `bound_notification_config_fields`                | Caps `email` at 254 characters, `signal_recipient` at 64 and `services` at three, for new writes (`not valid`). |
 
 Supabase runs each migration once. All but `20250225120000` and `20260527000000` are also safe to run again. Comments
 inside the older migrations describe the app as it was when they were written (for example, before wallet sign-in
@@ -126,6 +129,8 @@ first makes these fail.
 | `20261029000000` | Saving an alert from the Hindi pages, or a channel set to Hindi (the language checks).       |
 | `20261029120000` | Saving an alert from the German or Vietnamese pages, or a channel set to either.             |
 | `20261102000000` | Saving an alert from any page of a language added after Vietnamese, or a channel set to one. |
+| `20261106000000` | Nothing stops: alerts send on every check as before, and each run reports that the repeat limit is off. |
+| `20261106010000` | Nothing: the API already applies the same limits. |
 
 **Upgrading a live deployment.** One migration works the other way round. `20261021000000` closes the tables to the anon
 key. Older versions of the app fell back to the anon key when `SUPABASE_SERVICE_ROLE_KEY` was not set, so before

@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Morpho Blue och Midnight: positioner och health factor-larm",
     intro: networks =>
       `Dina lånepositioner i marknaderna som Morpho-appen listar, på ${networks}: lån med rörlig ränta (Morpho Blue) och lån med fast ränta (Morpho Midnight). Health factor läses från kedjan.`,
-    checks: minutes =>
-      `Larmen kontrolleras ${plural("sv", minutes, { one: "en gång i minuten", other: `var ${minutes} minuter` })}. Ett lån med fast ränta får också en påminnelse 7 dagar och 1 dag före förfallodagen, och efter förfallodagen ett larm vid varje kontroll så länge det finns skuld kvar.`,
+    checks: (minutes, repeatMinutes) =>
+      `Larmen kontrolleras ${plural("sv", minutes, { one: "en gång i minuten", other: `var ${minutes} minuter` })}. Ett lån med fast ränta får också en påminnelse 7 dagar och 1 dag före förfallodagen, och efter förfallodagen ett larm var ${repeatMinutes}:e minut så länge det finns skuld kvar.`,
     access: "En betalning för åtkomst täcker dina larm för Aave och Morpho.",
     notAffiliated: "Tokenping är inte knutet till Morpho.",
     guideHealthFactor: "Så fungerar health factor på Morpho",

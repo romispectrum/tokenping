@@ -36,8 +36,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Скільки коштують сповіщення і як часто ми перевіряємо",
     alertsCost: (channels, paymentChain) =>
       `Щоб отримувати повідомлення через ${channels}, коли health factor ринку падає нижче обраного вами порогу, відкрийте сповіщення оплатою в USDC${paymentChain ? ` ${ukOnMarket(paymentChain, "network")}` : ""}. Поточну ціну ви побачите перед оплатою.`,
-    checks: minutes =>
-      `Tokenping перевіряє ${everyMinutes(minutes)}. Поки health factor лишається нижче вашого порогу, кожна перевірка надсилає нове повідомлення в кожен обраний вами канал.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping перевіряє ${everyMinutes(minutes)}. Поки health factor лишається нижче вашого порогу, ви отримуєте повідомлення кожні ${repeatMinutes} хвилин у кожен обраний вами канал.`,
     guideThreshold: "Як вибрати поріг",
     guideAlerts: "Як працюють сповіщення",
     morphoDashboard: "Позичаєте в Morpho? Відкрити панель Morpho",

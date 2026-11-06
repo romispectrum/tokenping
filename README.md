@@ -39,14 +39,15 @@ Tokenping is in beta. It is an independent tool, not affiliated with Aave Labs, 
   with Morpho's own math (`services/morpho`), in the browser and in the cron, so checks never depend on the API. A
   Morpho threshold goes down to 1.02. A borrower who opted into a Blue market's pre-liquidation is measured against
   that earlier line. A Midnight loan also gets one reminder 7 days and one 1 day before it matures
-  (`notification_maturity_reminders`), then an alert at every check after maturity while debt remains. The same paid
+  (`notification_maturity_reminders`), then an alert every 15 minutes after maturity while debt remains. The same paid
   access covers Aave and Morpho alerts, and the 50-alert limit counts both.
 - **Language per channel.** Each channel is sent in English, Czech, Spanish, Hindi, German or Vietnamese, chosen next to its recipient. A channel starts in
   the language of the page you added it from.
 - **Send test.** Every channel has a "Send test" button that sends the alert as saved, with your position right now.
   The limit is one test per channel every 15 minutes, enforced in the database.
 - **Checks every 5 minutes.** A Vercel cron calls `/api/cron/notifications` (`packages/nextjs/vercel.json`), which reads
-  each saved alert's health factor and messages every selected channel while it is below the threshold.
+  each saved alert's health factor and messages every selected channel every 15 minutes while it is below the
+  threshold (`notification_alert_sends`).
 - **Wallet sign-in.** Alert settings are tied to a wallet. You sign a Sign-in with Ethereum message once, and an HttpOnly
   session cookie lasts 7 days. The alert API only acts for the signed-in wallet.
 - **Paid access on-chain.** `TokenpingPaywall` (an upgradeable UUPS proxy on Arbitrum One) sells access for USDC: an
@@ -103,11 +104,14 @@ How the pieces fit together, with a diagram: [docs/architecture.md](docs/archite
   the API lists Midnight markets (Ethereum, Base, Arc and Robinhood Chain), so not on Tempo. A Blue market's
   pre-liquidation contracts are read when an alert is saved or edited, so one Morpho adds later counts once the alert
   is saved again. Amounts are in the loan token, with no USD prices. The cron spends at most 20 seconds per run reading
-  Morpho positions; one not read by then is read on the next run.
+  Morpho positions and 40 seconds reading Aave positions; one not read by then is read on the next run.
 - Polling, not real time: a fast price move can cross a health factor of 1.0 between two checks. Alerts reduce risk;
   they do not prevent liquidation.
-- While a health factor is below its threshold, every check sends another message on each channel. There is no
-  cooldown, snooze or "recovered" message, and emails have no unsubscribe link yet.
+- While a health factor is below its threshold, each channel gets a message every 15 minutes, starting at once. There
+  is no snooze or "recovered" message, and emails have no unsubscribe link yet.
+- Recipients are not verified: a wallet with active access can save anyone's email address or Signal username, or the
+  Telegram username of anyone who pressed Start, and alerts and test messages go there. Telegram's /stop ends them for
+  that chat, and Signal's block does the same; an email recipient has no way out yet.
 - Only the connected wallet can be watched: no watch-only addresses, and access is per paying wallet.
 - A wallet can hold at most 50 alerts.
 - Paid access is checked when an alert is saved, deleted or tested, not when the cron runs. An alert whose access has
@@ -116,7 +120,8 @@ How the pieces fit together, with a diagram: [docs/architecture.md](docs/archite
   its owner can change the price, pause payments, withdraw funds and upgrade it.
 - An ordinary wallet's sign-in signature is checked locally; a smart wallet's (ERC-1271, ERC-6492) only through the
   app's own RPC (`NEXT_PUBLIC_ALCHEMY_API_KEY` or `rpcOverrides`), never a public one, so without one smart wallets
-  cannot sign in. A copied session cookie stays valid until it expires (7 days), and rotating `SESSION_SECRET` ends
+  cannot sign in. A smart wallet signs in on Arbitrum only, the chain its paid access lives on, because its owners can
+  differ per chain. Paid access is read through the same own RPC when there is one, and a public RPC otherwise. A copied session cookie stays valid until it expires (7 days), and rotating `SESSION_SECRET` ends
   every session. Sign-in needs the `auth_nonces` table and the Supabase service role key, and has no rate limit of its
   own. Disconnecting the wallet while the site is open clears the cookie.
 - Anyone can ask `/api/telegram/status` whether a Telegram username has pressed Start in the bot. It answers yes or no,

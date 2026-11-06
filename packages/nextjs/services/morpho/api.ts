@@ -166,8 +166,12 @@ export const fetchMorphoPositions = (address: Address, fetchImpl: Fetch = fetch)
 /** Whether a market is listed and, for Blue, its pre-liquidation contracts. Null when the API does not know it. */
 export type MorphoListing = { listed: boolean; preLiquidations: Address[] };
 
-const BLUE_MARKET_QUERY = `query BlueMarket($marketId: String!, $chainId: Int!) {
-  marketById(marketId: $marketId, chainId: $chainId) { marketId listed preLiquidations(first: 100) { items { address } } }
+const PRE_LIQUIDATION_PAGE = 100;
+/** Pages read per market: a market with more contracts than this keeps its first ones. */
+const MAX_PRE_LIQUIDATION_PAGES = 5;
+
+const BLUE_MARKET_QUERY = `query BlueMarket($marketId: String!, $chainId: Int!, $skip: Int) {
+  marketById(marketId: $marketId, chainId: $chainId) { marketId listed preLiquidations(first: ${PRE_LIQUIDATION_PAGE}, skip: $skip) { items { address } } }
 }`;
 
 export const fetchMorphoListing = (
@@ -178,15 +182,22 @@ export const fetchMorphoListing = (
 ): Promise<MorphoListing | null> =>
   asApiError(async () => {
     if (protocol === "morpho-blue") {
-      const data = await graphql<{
-        marketById: { marketId: string; listed: boolean; preLiquidations?: { items?: unknown } } | null;
-      }>(fetchImpl, BLUE_MARKET_QUERY, { marketId, chainId });
-      const market = data?.marketById;
-      if (!market || market.marketId?.toLowerCase() !== marketId.toLowerCase()) return null;
-      return {
-        listed: market.listed === true,
-        preLiquidations: preLiquidationAddresses(market.preLiquidations?.items),
-      };
+      // Every page: a contract left out of a first page would read as not there, and the alert would watch the later line.
+      const preLiquidations: Address[] = [];
+      for (let page = 0; page < MAX_PRE_LIQUIDATION_PAGES; page++) {
+        const skip = page * PRE_LIQUIDATION_PAGE;
+        const data = await graphql<{
+          marketById: { marketId: string; listed: boolean; preLiquidations?: { items?: unknown } } | null;
+        }>(fetchImpl, BLUE_MARKET_QUERY, { marketId, chainId, skip });
+        const market = data?.marketById;
+        if (!market || market.marketId?.toLowerCase() !== marketId.toLowerCase()) return null;
+        const items = market.preLiquidations?.items;
+        preLiquidations.push(...preLiquidationAddresses(items));
+        if (market.listed !== true || !Array.isArray(items) || items.length < PRE_LIQUIDATION_PAGE) {
+          return { listed: market.listed === true, preLiquidations };
+        }
+      }
+      return { listed: true, preLiquidations };
     }
     const params = new URLSearchParams({ market_ids: marketId, chain_ids: String(chainId) });
     const body = (await request(fetchImpl, `${MORPHO_API_URL}/v0/midnight/markets?${params}`)) as {

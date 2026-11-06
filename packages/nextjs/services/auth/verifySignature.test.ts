@@ -1,6 +1,6 @@
 import type { Address, EIP1193RequestFn, Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { base } from "viem/chains";
+import { base, mainnet } from "viem/chains";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { verifyWalletSignature } from "~~/services/auth/verifySignature";
 import { getConfiguredTransport } from "~~/utils/rpc";
@@ -22,6 +22,11 @@ vi.mock("~~/utils/rpc", async () => {
       }) as EIP1193RequestFn,
     });
   return { getConfiguredTransport: vi.fn(() => (rpc.configured === undefined ? undefined : transport())) };
+});
+
+vi.mock("~~/constants/payments", async () => {
+  const { base } = await import("viem/chains");
+  return { PAYMENT_CHAIN_ID: base.id };
 });
 
 const MESSAGE = "tokenping.xyz wants you to sign in with your Ethereum account: ...";
@@ -73,6 +78,14 @@ describe("verifyWalletSignature: an ordinary wallet", () => {
 });
 
 describe("verifyWalletSignature: a smart wallet", () => {
+  it("is refused off the payment chain, where its owners can differ, without asking any RPC", async () => {
+    const signature = `0x${"11".repeat(65)}` as Hex;
+    const result = await verifyWalletSignature({ chain: mainnet, address: SMART_WALLET, message: MESSAGE, signature });
+
+    expect(result).toBe(false);
+    expect(rpc.calls).toEqual([]);
+  });
+
   it("is checked with an eth_call on the message's chain, through the app's own endpoint, without retries", async () => {
     expect(await verify(SMART_WALLET, "0x1234")).toBe(true);
     expect(vi.mocked(getConfiguredTransport).mock.calls).toEqual([[base.id, { retryCount: 0 }]]);

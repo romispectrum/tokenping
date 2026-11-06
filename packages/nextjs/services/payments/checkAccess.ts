@@ -1,9 +1,12 @@
 import { type Address, createPublicClient } from "viem";
 import { PAYMENT_CHAIN_ID, getPaywallContract } from "~~/constants/payments";
 import scaffoldConfig from "~~/scaffold.config";
-import { getFallbackTransport } from "~~/utils/rpc";
+import { getConfiguredTransport, getFallbackTransport } from "~~/utils/rpc";
 
-/** Fails closed: any missing configuration or RPC error counts as no access. */
+/**
+ * Fails closed: any missing configuration or RPC error counts as no access. Asked through the app's own RPC when it has
+ * one, never a public endpoint it would otherwise fall back to, since an answer of `true` opens the paid features.
+ */
 export const isAccessActive = async (userAddress: string): Promise<boolean> => {
   if (PAYMENT_CHAIN_ID === undefined) return false;
   const contract = getPaywallContract(PAYMENT_CHAIN_ID);
@@ -12,7 +15,10 @@ export const isAccessActive = async (userAddress: string): Promise<boolean> => {
   const chain = scaffoldConfig.targetNetworks.find(({ id }) => id === PAYMENT_CHAIN_ID);
   if (!chain) return false;
 
-  const client = createPublicClient({ chain, transport: getFallbackTransport(chain) });
+  const client = createPublicClient({
+    chain,
+    transport: getConfiguredTransport(chain.id) ?? getFallbackTransport(chain),
+  });
   try {
     const active = await client.readContract({
       address: contract.address,

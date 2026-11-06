@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Morpho Blue og Midnight: posisjoner og health factor-varsler",
     intro: networks =>
       `Lånene dine i markedene som Morpho-appen viser, på ${networks}: lån med flytende rente (Morpho Blue) og lån med fast rente (Morpho Midnight). Health factor leses fra kjeden.`,
-    checks: minutes =>
-      `Varslene sjekkes ${plural("nb", minutes, { one: "hvert minutt", other: `hvert ${minutes}. minutt` })}. Et lån med fast rente får også en påminnelse 7 dager og 1 dag før forfallsdatoen, og etter forfallsdatoen et varsel ved hver sjekk så lenge det er gjeld igjen.`,
+    checks: (minutes, repeatMinutes) =>
+      `Varslene sjekkes ${plural("nb", minutes, { one: "hvert minutt", other: `hvert ${minutes}. minutt` })}. Et lån med fast rente får også en påminnelse 7 dager og 1 dag før forfallsdatoen, og etter forfallsdatoen et varsel hvert ${repeatMinutes}. minutt så lenge det er gjeld igjen.`,
     access: "Én betaling for tilgang dekker varslene dine for Aave og Morpho.",
     notAffiliated: "Tokenping er ikke tilknyttet Morpho.",
     guideHealthFactor: "Slik fungerer health factor på Morpho",

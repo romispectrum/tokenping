@@ -18,8 +18,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Pozicije v Morpho Blue in Midnight ter opozorila za health factor",
     intro: networks =>
       `Tvoje pozicije izposoje na trgih, ki jih navaja aplikacija Morpho, na omrežjih ${networks}: posojila s spremenljivo obrestno mero (Morpho Blue) in posojila s fiksno obrestno mero (Morpho Midnight). Health factor se bere z verige.`,
-    checks: minutes =>
-      `Opozorila se preverjajo ${everyMinutes(minutes)}. Posojilo s fiksno obrestno mero dobi tudi opomnik 7 dni in 1 dan pred zapadlostjo, po zapadlosti pa opozorilo ob vsakem preverjanju, dokler ostaja dolg.`,
+    checks: (minutes, repeatMinutes) =>
+      `Opozorila se preverjajo ${everyMinutes(minutes)}. Posojilo s fiksno obrestno mero dobi tudi opomnik 7 dni in 1 dan pred zapadlostjo, po zapadlosti pa opozorilo vsakih ${repeatMinutes} minut, dokler ostaja dolg.`,
     access: "Eno plačilo za dostop pokrije tvoja opozorila za Aave in Morpho.",
     notAffiliated: "Tokenping ni povezan z Morpho.",
     guideHealthFactor: "Kako deluje health factor v Morpho",

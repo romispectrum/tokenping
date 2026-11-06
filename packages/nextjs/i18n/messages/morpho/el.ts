@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Θέσεις Morpho Blue και Midnight και ειδοποιήσεις health factor",
     intro: networks =>
       `Οι θέσεις δανεισμού σας στις αγορές που εμφανίζει η εφαρμογή του Morpho, στα δίκτυα ${networks}: δάνεια κυμαινόμενου επιτοκίου (Morpho Blue) και δάνεια σταθερού επιτοκίου (Morpho Midnight). Τα health factor διαβάζονται από το blockchain.`,
-    checks: minutes =>
-      `Οι ειδοποιήσεις ελέγχονται ${plural("el", minutes, { one: "κάθε λεπτό", other: `κάθε ${minutes} λεπτά` })}. Ένα δάνειο σταθερού επιτοκίου λαμβάνει επίσης υπενθύμιση 7 ημέρες και 1 ημέρα πριν από τη λήξη του, καθώς και ειδοποίηση σε κάθε έλεγχο μετά τη λήξη όσο υπάρχει ακόμη χρέος.`,
+    checks: (minutes, repeatMinutes) =>
+      `Οι ειδοποιήσεις ελέγχονται ${plural("el", minutes, { one: "κάθε λεπτό", other: `κάθε ${minutes} λεπτά` })}. Ένα δάνειο σταθερού επιτοκίου λαμβάνει επίσης υπενθύμιση 7 ημέρες και 1 ημέρα πριν από τη λήξη του, καθώς και ειδοποίηση κάθε ${repeatMinutes} λεπτά μετά τη λήξη όσο υπάρχει ακόμη χρέος.`,
     access: "Μία πληρωμή πρόσβασης καλύπτει τις ειδοποιήσεις σας για το Aave και το Morpho.",
     notAffiliated: "Το Tokenping δεν συνδέεται με το Morpho.",
     guideHealthFactor: "Πώς λειτουργεί το health factor στο Morpho",

@@ -7,6 +7,9 @@ import { isStoredMarketParams } from "~~/services/morpho/storedParams";
 import type { MorphoMarketParams, MorphoReading } from "~~/services/morpho/types";
 import { type NotificationConfigRow, rowMarketRef } from "~~/services/notifications/configRepository";
 import { isBelowMorphoThreshold } from "~~/services/notifications/morphoMessages";
+import { TIMED_OUT, readWithinBudget } from "~~/services/notifications/readWithinBudget";
+
+export { TIMED_OUT };
 
 // What the cron needs to check a Morpho alert, and the reads themselves. Health comes from the chain only (never from
 // Morpho's API), with the market parameters stored when the alert was saved.
@@ -79,56 +82,18 @@ export const morphoNotices = (
   return isBelowMorphoThreshold(reading, threshold) ? [{ kind: "health" }] : [];
 };
 
-/** How many positions are read at once on one chain. */
-const READ_CONCURRENCY = 4;
-
-/** A position not read before the deadline: the next run reads it. */
-export const TIMED_OUT = "timeout";
-
-const beforeDeadline = <T>(promise: Promise<T>, deadline: number) =>
-  new Promise<T | typeof TIMED_OUT | null>(resolve => {
-    const timer = setTimeout(() => resolve(TIMED_OUT), Math.max(0, deadline - Date.now()));
-    promise.then(
-      value => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      () => {
-        clearTimeout(timer);
-        resolve(null);
-      },
-    );
-  });
-
 /**
- * Reads every alert's position, in the order given: chains in parallel, READ_CONCURRENCY positions at a time on each,
- * until `deadline` (epoch ms). Each result is a reading, null when the position could not be read, or TIMED_OUT.
+ * Reads every alert's position, in the order given, until `deadline` (epoch ms): see readWithinBudget. Each result is a
+ * reading, null when the position could not be read, or TIMED_OUT.
  */
-export async function readMorphoPositions<Row extends { user_id: string }>(
+export const readMorphoPositions = <Row extends { user_id: string }>(
   alerts: readonly MorphoAlert<Row>[],
   deadline: number,
   clientFor: (chain: MorphoChain["chain"]) => MorphoClient = createMorphoClientCache(1),
-) {
-  const results: (MorphoReading | null | typeof TIMED_OUT)[] = alerts.map(() => TIMED_OUT);
-  const byChain = new Map<number, number[]>();
-  alerts.forEach(({ chain }, index) => byChain.set(chain.chain.id, [...(byChain.get(chain.chain.id) ?? []), index]));
-
-  await Promise.all(
-    [...byChain.values()].map(indexes => {
-      let next = 0;
-      const worker = async () => {
-        while (next < indexes.length) {
-          const index = indexes[next++];
-          if (Date.now() >= deadline) continue;
-          const alert = alerts[index];
-          results[index] = await beforeDeadline(
-            readMorphoHealth(clientFor(alert.chain.chain), alert, alert.row.user_id as Address),
-            deadline,
-          );
-        }
-      };
-      return Promise.all(Array.from({ length: Math.min(READ_CONCURRENCY, indexes.length) }, worker));
-    }),
+) =>
+  readWithinBudget(
+    alerts,
+    alert => alert.chain.chain.id,
+    alert => readMorphoHealth(clientFor(alert.chain.chain), alert, alert.row.user_id as Address),
+    deadline,
   );
-  return results;
-}

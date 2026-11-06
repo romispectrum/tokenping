@@ -15,8 +15,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Hva varsler koster og hvor ofte vi sjekker",
     alertsCost: (channels, paymentChain) =>
       `Vil du få en melding via ${channels} når health factor for et marked faller under en terskel du velger? Lås opp varslene med en betaling i USDC${paymentChain ? ` på ${paymentChain}` : ""}. Du ser gjeldende pris før du betaler.`,
-    checks: minutes =>
-      `Tokenping sjekker ${plural("nb", minutes, { one: "hvert minutt", other: `hvert ${minutes}. minutt` })}. Så lenge health factor er under terskelen din, sender hver sjekk en ny melding via hver kanal du har valgt.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping sjekker ${plural("nb", minutes, { one: "hvert minutt", other: `hvert ${minutes}. minutt` })}. Så lenge health factor er under terskelen din, får du en melding hvert ${repeatMinutes}. minutt via hver kanal du har valgt.`,
     guideThreshold: "Slik velger du en terskel",
     guideAlerts: "Slik fungerer varslene",
     morphoDashboard: "Låner du på Morpho? Åpne oversikten for Morpho",

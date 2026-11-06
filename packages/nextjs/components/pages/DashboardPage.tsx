@@ -4,7 +4,7 @@ import { AaveDashboard } from "~~/components/dashboard/AaveDashboard";
 import { Container } from "~~/components/home/marketingLayout";
 import { PAGE_LINK_CLASS_NAME } from "~~/components/pages/pageLinks";
 import { AAVE_NETWORK_NAMES, AAVE_V3_NETWORKS, AAVE_V4_NETWORK_NAMES } from "~~/config/aaveConfig";
-import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
+import { ALERT_REPEAT_MINUTES, NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { getPostByKey, isPublished } from "~~/content/blog";
 import { joinList } from "~~/i18n/format";
 import type { Locale } from "~~/i18n/locales";
@@ -74,7 +74,7 @@ export const DashboardPage = ({ locale }: { locale: Locale }) => {
               </summary>
               <div className="flex flex-col gap-2 pt-2">
                 <p className="m-0">{page.alertsCost(channels, getPaymentChainName())}</p>
-                <p className="m-0">{page.checks(NOTIFICATION_CHECK_INTERVAL_MINUTES)}</p>
+                <p className="m-0">{page.checks(NOTIFICATION_CHECK_INTERVAL_MINUTES, ALERT_REPEAT_MINUTES)}</p>
               </div>
             </details>
           </div>

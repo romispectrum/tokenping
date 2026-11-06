@@ -97,6 +97,27 @@ describe("readBlueHealth", () => {
     expect(await read({ price: [success(PRICE), failure()] })).toMatchObject({ line: "lltv" });
   });
 
+  it("never calls the oracle of a pre-liquidation the borrower did not authorise", async () => {
+    const client = fakeClient(blueAnswers({}));
+    const reading = await readBlueHealth(client, ETHEREUM, MARKET, USER, BLUE);
+    const called = vi
+      .mocked(client.multicall)
+      .mock.calls.flatMap(([{ contracts }]) => contracts as { address: Address }[]);
+
+    expect(reading).toMatchObject({ line: "lltv" });
+    expect(called.map(({ address }) => address)).not.toContain(BLUE.preLiquidations[0].oracle);
+  });
+
+  it("reads an authorised oracle in a multicall of its own, away from the position", async () => {
+    const client = fakeClient(blueAnswers({ isAuthorized: [success(true)] }));
+    await readBlueHealth(client, ETHEREUM, MARKET, USER, BLUE);
+    const rounds = vi.mocked(client.multicall).mock.calls.map(([{ contracts }]) => contracts as { address: Address }[]);
+
+    expect(rounds).toHaveLength(2);
+    expect(rounds[0].map(({ address }) => address)).not.toContain(BLUE.preLiquidations[0].oracle);
+    expect(rounds[1].map(({ address }) => address)).toEqual([BLUE.preLiquidations[0].oracle]);
+  });
+
   it("reads no interest rate for a market without an IRM", async () => {
     const client = fakeClient(blueAnswers());
     const reading = await readBlueHealth(client, ETHEREUM, MARKET, USER, {

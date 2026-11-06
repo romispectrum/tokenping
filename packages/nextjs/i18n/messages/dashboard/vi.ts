@@ -13,8 +13,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Chi phí của cảnh báo và tần suất kiểm tra",
     alertsCost: (channels, paymentChain) =>
       `Để nhận tin nhắn qua ${channels} khi hệ số sức khỏe của một thị trường giảm xuống dưới ngưỡng bạn chọn, hãy mở khóa cảnh báo bằng một khoản thanh toán USDC${paymentChain ? ` trên mạng ${paymentChain}` : ""}. Giá hiện tại được hiển thị trước khi bạn thanh toán.`,
-    checks: minutes =>
-      `Tokenping kiểm tra ${minutes} phút một lần. Khi hệ số sức khỏe vẫn ở dưới ngưỡng của bạn, mỗi lần kiểm tra lại gửi thêm một tin nhắn qua từng kênh bạn đã chọn.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping kiểm tra ${minutes} phút một lần. Khi hệ số sức khỏe vẫn ở dưới ngưỡng của bạn, bạn nhận một tin nhắn mỗi ${repeatMinutes} phút qua từng kênh đã chọn.`,
     guideThreshold: "Cách chọn ngưỡng",
     guideAlerts: "Cách cảnh báo hoạt động",
     morphoDashboard: "Bạn vay trên Morpho? Mở bảng điều khiển Morpho",

@@ -8,8 +8,9 @@
  * Both act for the wallet of the session cookie (401 without one). A `userId` an older client still sends must name
  * that wallet (403 otherwise).
  *
- * The recipient always comes from the saved alert, never from the request, so the button cannot be used to message
- * an arbitrary address. One test per wallet and channel every TEST_SEND_COOLDOWN_MINUTES, enforced by the database
+ * The recipient always comes from the saved alert, never from the request. Recipients are not verified (README, Limits):
+ * a wallet with active access can save someone else's address and test it, so the limit below is what bounds this route.
+ * One test per wallet and channel every TEST_SEND_COOLDOWN_MINUTES, enforced by the database
  * (claim_notification_test_send). The slot is claimed before anything else; when the send fails it is given back,
  * so a broken channel can be tried again at once.
  *
@@ -47,7 +48,8 @@ import { buildMorphoTestMessage } from "~~/services/notifications/morphoMessages
 import { ALERT_SENDERS } from "~~/services/notifications/runNotificationCheck";
 import { buildTestMessage } from "~~/services/notifications/testMessage";
 import { claimTestSend, getTestSendRetryTimes, releaseTestSend } from "~~/services/notifications/testSends";
-import { getChatIdByUsername } from "~~/services/telegram/telegramChats";
+import { chatHoldsUsername } from "~~/services/telegram/sendTelegram";
+import { deleteTelegramChat, getChatIdByUsername } from "~~/services/telegram/telegramChats";
 import type { NotificationService } from "~~/types/notifications";
 import { MORPHO_THRESHOLD_RANGE, normalizeThreshold } from "~~/utils/notifications/threshold";
 import { isNotificationService } from "~~/utils/notifications/validation";
@@ -69,7 +71,9 @@ const recipientFor = async (config: NotificationConfigRow, channel: Notification
   const username = config.telegram_username?.trim();
   if (!username) return { error: "This alert has no Telegram username saved", status: 400 };
   const chatId = await getChatIdByUsername(username);
-  if (chatId) return { recipient: chatId };
+  if (chatId && (await chatHoldsUsername(chatId, username))) return { recipient: chatId };
+  // Its former owner keeps the row until now, so the name reads as not started and whoever holds it can press Start.
+  if (chatId) await deleteTelegramChat(chatId);
   const bot = getTelegramBotUsername();
   return {
     error: `@${username} has not pressed Start in ${bot ? `@${bot}` : "the Tokenping bot"} yet`,

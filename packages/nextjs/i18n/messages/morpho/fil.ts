@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Mga posisyon sa Morpho Blue at Midnight at mga health factor alert",
     intro: networks =>
       `Ang mga borrow position mo sa mga market na nakalista sa Morpho app, sa ${networks}: mga variable-rate na loan (Morpho Blue) at mga fixed-rate na loan (Morpho Midnight). Binabasa mula sa chain ang mga health factor.`,
-    checks: minutes =>
-      `Tinitingnan ang mga alerto bawat ${minutes} minuto. Nakakatanggap din ang fixed-rate na loan ng paalala 7 araw at 1 araw bago ang maturity nito, at ng alerto sa bawat pagtingin pagkalipas ng maturity habang may natitirang utang.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tinitingnan ang mga alerto bawat ${minutes} minuto. Nakakatanggap din ang fixed-rate na loan ng paalala 7 araw at 1 araw bago ang maturity nito, at ng alerto bawat ${repeatMinutes} minuto pagkalipas ng maturity habang may natitirang utang.`,
     access: "Sakop ng iisang bayad para sa access ang mga alerto mo sa Aave at Morpho.",
     notAffiliated: "Hindi kaanib ng Morpho ang Tokenping.",
     guideHealthFactor: "Paano gumagana ang health factor sa Morpho",

@@ -16,8 +16,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Mennyibe kerülnek a riasztások, és milyen gyakran ellenőrzünk",
     alertsCost: (channels, paymentChain) =>
       `Ha üzenetet szeretnél kapni (${channels}), amikor egy piac health factora az általad választott küszöbérték alá esik, oldd fel a riasztásokat egy USDC-fizetéssel${paymentChain ? ` ${huOnMarket(paymentChain, "network")}` : ""}. Az aktuális árat fizetés előtt látod.`,
-    checks: minutes =>
-      `A Tokenping ${minutes} percenként ellenőriz. Amíg a health factor a küszöbértéked alatt marad, minden ellenőrzés újabb üzenetet küld minden kiválasztott csatornára.`,
+    checks: (minutes, repeatMinutes) =>
+      `A Tokenping ${minutes} percenként ellenőriz. Amíg a health factor a küszöbértéked alatt marad, ${repeatMinutes} percenként kapsz üzenetet minden kiválasztott csatornán.`,
     guideThreshold: "Hogyan válassz küszöbértéket",
     guideAlerts: "Hogyan működnek a riasztások",
     morphoDashboard: "Morphón veszel fel hitelt? Nyisd meg a Morpho irányítópultot",

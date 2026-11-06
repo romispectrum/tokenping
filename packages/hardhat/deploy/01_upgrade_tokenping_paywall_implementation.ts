@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
+import { type StorageLayout, storageLayoutProblems } from "./shared/storageLayout";
 
 const ERC1967_IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
 
@@ -33,6 +34,27 @@ const upgradeTokenpingPaywallImplementation: DeployFunction = async function (hr
 
   const implementationBefore = await getImplementationFromSlot(hre, proxyAddress);
   console.log("Current implementation:", implementationBefore);
+
+  // Before anything is deployed: `deploy` below overwrites the saved implementation record this compares against.
+  const liveImplementation = await hre.deployments.getOrNull("TokenpingPaywall_Implementation");
+  if (liveImplementation?.address.toLowerCase() !== implementationBefore.toLowerCase()) {
+    throw new Error(
+      `The saved TokenpingPaywall_Implementation is not the live one (${implementationBefore}), so the storage layouts cannot be compared.`,
+    );
+  }
+  const { storageLayout: nextLayout } = await hre.deployments.getExtendedArtifact("TokenpingPaywall");
+  if (!liveImplementation.storageLayout || !nextLayout) {
+    throw new Error("Missing a storage layout, so the upgrade cannot be checked. Run `yarn compile` and try again.");
+  }
+  const layoutProblems = storageLayoutProblems(
+    liveImplementation.storageLayout as StorageLayout,
+    nextLayout as StorageLayout,
+  );
+  if (layoutProblems.length > 0) {
+    throw new Error(
+      `Refusing the upgrade: the new storage layout would misread the proxy's data.\n- ${layoutProblems.join("\n- ")}`,
+    );
+  }
 
   const implementationDeployment = await deploy("TokenpingPaywall_Implementation", {
     from: deployer,

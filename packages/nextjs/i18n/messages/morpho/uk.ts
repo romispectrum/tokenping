@@ -23,8 +23,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Позиції в Morpho Blue і Midnight та сповіщення про health factor",
     intro: networks =>
       `Ваші позики на ринках, які показує застосунок Morpho, у цих мережах: ${networks}. Позики зі змінною ставкою (Morpho Blue) і позики з фіксованою ставкою (Morpho Midnight). Health factor зчитується з блокчейну.`,
-    checks: minutes =>
-      `Сповіщення перевіряються ${everyMinutes(minutes)}. Позика з фіксованою ставкою також отримує нагадування за 7 днів і за 1 день до строку погашення, а після нього сповіщення під час кожної перевірки, поки лишається борг.`,
+    checks: (minutes, repeatMinutes) =>
+      `Сповіщення перевіряються ${everyMinutes(minutes)}. Позика з фіксованою ставкою також отримує нагадування за 7 днів і за 1 день до строку погашення, а після нього сповіщення кожні ${repeatMinutes} хвилин, поки лишається борг.`,
     access: "Одна оплата доступу покриває ваші сповіщення в Aave і в Morpho.",
     notAffiliated: "Tokenping не пов'язаний з Morpho.",
     guideHealthFactor: "Як працює health factor у Morpho",

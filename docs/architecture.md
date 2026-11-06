@@ -90,16 +90,21 @@ chain and stored in `market_params`, and an API outage answers 503 rather than s
 deleting an existing Morpho alert never depends on the API.
 
 **The 5-minute check.** Vercel calls `GET /api/cron/notifications` with `Authorization: Bearer <CRON_SECRET>`. The route
-loads every enabled alert and every linked Telegram chat, then for each alert reads the wallet's health factor in the
-alert's market (a V3 Pool or a V4 Spoke) over RPC. When the health factor is below the threshold it sends one message
-on each selected channel, in that channel's language. A Telegram chat that has blocked the bot is deleted from
-`telegram_chats`. The run does not look at paid access: a saved alert keeps firing after access lapses.
+loads every enabled alert and every linked Telegram chat, then reads each wallet's health factor in the alert's market
+(a V3 Pool or a V4 Spoke) over RPC, chains side by side and four at a time on each, within 40 seconds per run. When the
+health factor is below the threshold it sends one message on each selected channel that is due, in that channel's
+language: `notification_alert_sends` keeps each channel's last send, so an alert repeats every 15 minutes, and its rows
+go once the position recovers. A failure there never holds an alert back. A Telegram chat that has blocked the bot, or
+that Telegram says no longer holds the alert's username, is deleted from `telegram_chats`. The run does not look at
+paid access: a saved alert keeps firing after access lapses.
 
 Morpho alerts are read first, from the chain only, with their stored market parameters: chains side by side, four
 positions at a time on each, within 20 seconds per run. A Blue position, or a Midnight one before maturity, alerts
 below its threshold, measured against a pre-liquidation line when the borrower opted into one. A Midnight loan also
 gets a reminder in its last 7 days and in its last day, each claimed in `notification_maturity_reminders` before it is
-sent (and given back when no channel took it), then an alert at every check after maturity while debt remains.
+sent (and given back when no channel took it), then an alert every 15 minutes after maturity while debt remains. A Blue
+market's parameters are checked against its id when they are stored, and a pre-liquidation contract's oracle runs only
+once the borrower has authorised it, in a multicall of its own: anyone can create such a contract with any oracle.
 
 **Linking Telegram.** A bot cannot message someone who never wrote to it, so the person types their `@username` into the
 alert and presses Start in the bot once. Telegram posts that update to `POST /api/telegram/webhook`, which checks the

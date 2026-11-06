@@ -13,8 +13,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "अलर्ट की कीमत क्या है और हम कितनी बार जाँच करते हैं",
     alertsCost: (channels, paymentChain) =>
       `जब किसी मार्केट का हेल्थ फ़ैक्टर आपकी चुनी हुई सीमा से नीचे गिरे, तब ${channels} पर संदेश पाने के लिए ${paymentChain ? `${paymentChain} नेटवर्क पर ` : ""}USDC में भुगतान करके अलर्ट अनलॉक करें। भुगतान से पहले मौजूदा कीमत दिखाई जाती है।`,
-    checks: minutes =>
-      `Tokenping हर ${plural("hi", minutes, { one: "मिनट", other: `${minutes} मिनट` })} जाँच करता है। जब तक हेल्थ फ़ैक्टर आपकी सीमा से नीचे रहता है, हर जाँच पर आपके चुने हुए हर चैनल पर एक और संदेश भेजा जाता है।`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping हर ${plural("hi", minutes, { one: "मिनट", other: `${minutes} मिनट` })} जाँच करता है। जब तक हेल्थ फ़ैक्टर आपकी सीमा से नीचे रहता है, आपके चुने हुए हर चैनल पर हर ${repeatMinutes} मिनट में एक संदेश भेजा जाता है।`,
     guideThreshold: "सीमा कैसे चुनें",
     guideAlerts: "अलर्ट कैसे काम करते हैं",
     morphoDashboard: "Morpho पर उधार लेते हैं? Morpho डैशबोर्ड खोलें",

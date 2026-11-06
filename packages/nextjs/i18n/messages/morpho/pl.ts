@@ -18,8 +18,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Pozycje i alerty o współczynniku zdrowia w Morpho Blue i Midnight",
     intro: networks =>
       `Twoje pozycje pożyczkowe na rynkach, które wyświetla aplikacja Morpho, w sieciach ${networks}: pożyczki o zmiennym oprocentowaniu (Morpho Blue) i o stałym oprocentowaniu (Morpho Midnight). Współczynniki zdrowia są odczytywane z blockchaina.`,
-    checks: minutes =>
-      `Alerty są sprawdzane ${everyMinutes(minutes)}. Pożyczka o stałym oprocentowaniu dostaje też przypomnienie 7 dni i 1 dzień przed terminem zapadalności, a po tym terminie alert przy każdym sprawdzeniu, dopóki pozostaje dług.`,
+    checks: (minutes, repeatMinutes) =>
+      `Alerty są sprawdzane ${everyMinutes(minutes)}. Pożyczka o stałym oprocentowaniu dostaje też przypomnienie 7 dni i 1 dzień przed terminem zapadalności, a po tym terminie alert co ${repeatMinutes} minut, dopóki pozostaje dług.`,
     access: "Jedna płatność za dostęp obejmuje alerty dla Aave i Morpho.",
     notAffiliated: "Tokenping nie jest powiązany z Morpho.",
     guideHealthFactor: "Jak działa współczynnik zdrowia w Morpho",

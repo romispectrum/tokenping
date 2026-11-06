@@ -13,6 +13,7 @@ import { isAccessActive } from "~~/services/payments/checkAccess";
  */
 
 const mocks = vi.hoisted(() => ({
+  chatHoldsUsername: vi.fn(),
   events: [] as string[],
   claim: { data: null as unknown, error: null as { message: string } | null },
   rpcCalls: [] as { fn: string; args: unknown }[],
@@ -40,6 +41,7 @@ vi.mock("~~/services/payments/checkAccess", () => ({ isAccessActive: vi.fn() }))
 vi.mock("~~/services/aave/getHealthFactor", () => ({ getMarketSnapshot: mocks.getMarketSnapshot }));
 vi.mock("~~/services/morpho/health", () => ({ readBlueHealth: mocks.readBlueHealth, readMidnightHealth: vi.fn() }));
 vi.mock("~~/services/notifications/runNotificationCheck", () => ({ ALERT_SENDERS: mocks.send }));
+vi.mock("~~/services/telegram/sendTelegram", () => ({ chatHoldsUsername: mocks.chatHoldsUsername }));
 
 const BASE_URL = "http://localhost/api/notifications/test";
 const NOW = "2026-10-14T09:05:07.000Z";
@@ -145,6 +147,7 @@ beforeEach(() => {
     });
   }
   vi.mocked(isAccessActive).mockReset().mockResolvedValue(true);
+  mocks.chatHoldsUsername.mockReset().mockResolvedValue(true);
   vi.stubEnv("NEXT_PUBLIC_TELEGRAM_BOT_USERNAME", BOT);
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(NOW));
@@ -490,6 +493,16 @@ describe("POST /api/notifications/test: sending", () => {
     savedAlert(storedRow({ signal_recipient: "  alice.42 " }));
     expect((await post({ ...VALID_BODY, channel: "signal" })).status).toBe(200);
     expect(mocks.send.signal.mock.calls).toEqual([["alice.42", expect.objectContaining({ text: EXPECTED_TEXT })]]);
+  });
+
+  it("treats a chat that gave the username up as not started, and unlinks it", async () => {
+    savedAlert(storedRow({ telegram_username: "alice_eth" }), 123456789);
+    mocks.chatHoldsUsername.mockResolvedValue(false);
+
+    expect((await post({ ...VALID_BODY, channel: "telegram" })).status).toBe(409);
+    expect(mocks.chatHoldsUsername.mock.calls).toEqual([["123456789", "alice_eth"]]);
+    expect(mocks.send.telegram).not.toHaveBeenCalled();
+    expect(fakeSupabase.log()).toContain('telegram_chats.delete().eq("chat_id","123456789")');
   });
 
   it("sends Telegram to the chat the saved username pressed Start in, not to the username", async () => {

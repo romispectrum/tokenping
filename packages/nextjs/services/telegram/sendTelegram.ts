@@ -40,6 +40,7 @@ export type SendTelegramResult =
   | { success: false; error: string; code: TelegramSendErrorCode; retryAfter?: number };
 
 const TELEGRAM_FETCH_TIMEOUT_MS = 8_000;
+const TELEGRAM_LOOKUP_TIMEOUT_MS = 3_000;
 
 export function isTelegramConfigured(): boolean {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN);
@@ -53,6 +54,38 @@ function scrubToken(input: string): string {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return input;
   return input.split(token).join("<redacted>");
+}
+
+/**
+ * The usernames `chatId`'s account holds right now, lowercased, or null when Telegram cannot say (no token, an outage,
+ * a chat it no longer knows). An account can hold several: bought usernames count too.
+ */
+export async function readTelegramUsernames(chatId: string): Promise<string[] | null> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return null;
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/getChat?chat_id=${encodeURIComponent(chatId)}`, {
+      signal: AbortSignal.timeout(TELEGRAM_LOOKUP_TIMEOUT_MS),
+    });
+    const json = (await response.json()) as {
+      ok?: boolean;
+      result?: { username?: string; active_usernames?: string[] };
+    };
+    if (!response.ok || !json.ok || !json.result) return null;
+    const { username, active_usernames: active = [] } = json.result;
+    return [...(username ? [username] : []), ...active].map(name => name.toLowerCase());
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether the chat still holds `username`. A chat keeps its row after a rename, and Telegram tells a bot nothing about
+ * it, so a send asks first. When Telegram cannot answer the message goes out: a safety alert is not held back.
+ */
+export async function chatHoldsUsername(chatId: string, username: string | null | undefined) {
+  const held = await readTelegramUsernames(chatId);
+  return held === null || held.includes(username?.trim() ?? "");
 }
 
 /**

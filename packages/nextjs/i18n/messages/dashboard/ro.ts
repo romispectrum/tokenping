@@ -19,12 +19,12 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Cât costă alertele și cât de des verificăm",
     alertsCost: (channels, paymentChain) =>
       `Ca să primești un mesaj prin ${channels} când health factor-ul unei piețe scade sub un prag ales de tine, deblochează alertele cu o plată în USDC${paymentChain ? ` pe ${paymentChain}` : ""}. Prețul actual este afișat înainte să plătești.`,
-    checks: minutes =>
+    checks: (minutes, repeatMinutes) =>
       `Tokenping verifică ${plural("ro", minutes, {
         one: "în fiecare minut",
         few: `la fiecare ${minutes} minute`,
         other: `la fiecare ${minutes} de minute`,
-      })}. Cât timp health factor-ul rămâne sub pragul tău, fiecare verificare trimite încă un mesaj pe fiecare canal ales.`,
+      })}. Cât timp health factor-ul rămâne sub pragul tău, primești un mesaj la fiecare ${repeatMinutes} minute pe fiecare canal ales.`,
     guideThreshold: "Cum alegi un prag",
     guideAlerts: "Cum funcționează alertele",
     morphoDashboard: "Te împrumuți pe Morpho? Deschide panoul Morpho",

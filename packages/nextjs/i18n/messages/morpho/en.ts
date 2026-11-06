@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Morpho Blue and Midnight positions and health factor alerts",
     intro: networks =>
       `Your borrow positions in the markets the Morpho app lists, on ${networks}: variable-rate loans (Morpho Blue) and fixed-rate loans (Morpho Midnight). Health factors are read from the chain.`,
-    checks: minutes =>
-      `Alerts are checked every ${minutes} minutes. A fixed-rate loan also gets a reminder 7 days and 1 day before it matures, and an alert at every check after maturity while debt remains.`,
+    checks: (minutes, repeatMinutes) =>
+      `Alerts are checked every ${minutes} minutes. A fixed-rate loan also gets a reminder 7 days and 1 day before it matures, and an alert every ${repeatMinutes} minutes after maturity while debt remains.`,
     access: "One access payment covers your Aave and Morpho alerts.",
     notAffiliated: "Tokenping is not affiliated with Morpho.",
     guideHealthFactor: "How the Morpho health factor works",

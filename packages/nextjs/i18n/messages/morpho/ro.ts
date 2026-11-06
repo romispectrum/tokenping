@@ -17,12 +17,12 @@ export const MESSAGES: MorphoMessages = {
     title: "Morpho Blue și Midnight: poziții și alerte de health factor",
     intro: networks =>
       `Pozițiile tale de împrumut din piețele listate în aplicația Morpho, pe ${networks}: împrumuturi cu dobândă variabilă (Morpho Blue) și împrumuturi cu dobândă fixă (Morpho Midnight). Health factor-ul este citit din blockchain.`,
-    checks: minutes =>
+    checks: (minutes, repeatMinutes) =>
       `Alertele sunt verificate ${plural("ro", minutes, {
         one: "în fiecare minut",
         few: `la fiecare ${minutes} minute`,
         other: `la fiecare ${minutes} de minute`,
-      })}. Un împrumut cu dobândă fixă primește și un memento cu 7 zile și cu 1 zi înainte de scadență, iar după scadență o alertă la fiecare verificare cât timp rămâne datorie.`,
+      })}. Un împrumut cu dobândă fixă primește și un memento cu 7 zile și cu 1 zi înainte de scadență, iar după scadență o alertă la fiecare ${repeatMinutes} minute cât timp rămâne datorie.`,
     access: "O singură plată pentru acces acoperă alertele tale pentru Aave și Morpho.",
     notAffiliated: "Tokenping nu este afiliat cu Morpho.",
     guideHealthFactor: "Cum funcționează health factor-ul pe Morpho",

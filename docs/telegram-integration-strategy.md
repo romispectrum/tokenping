@@ -45,6 +45,8 @@ into `telegram_chats` and dropped the old tables.
 - Only the account that owns a username can link it, because the chat is stored under the username Telegram reports for
   the sender, never one taken from the message text.
 - A username change breaks the link until the person types the new name and sends `/start` again, which moves the chat.
+  Telegram tells a bot nothing about a rename, so each send first asks `getChat` whether the chat still holds the name,
+  and unlinks it when it does not. Until then `/api/telegram/status` can still answer that the old name is linked.
 - `GET /api/telegram/status` is public and answers yes or no, never a chat id. Anyone can ask whether a username has
   pressed Start in the bot.
 - Several wallets' alerts can name the same username; they all reach the one chat.

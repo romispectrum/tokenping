@@ -13,8 +13,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Was Alerts kosten und wie oft wir prüfen",
     alertsCost: (channels, paymentChain) =>
       `Um eine Nachricht per ${channels} zu bekommen, wenn der Health Factor eines Markts unter einen Schwellenwert fällt, den du wählst, schalte die Alerts mit einer USDC-Zahlung${paymentChain ? ` auf ${paymentChain}` : ""} frei. Der aktuelle Preis wird vor dem Bezahlen angezeigt.`,
-    checks: minutes =>
-      `Tokenping prüft ${plural("de", minutes, { one: "jede Minute", other: `alle ${minutes} Minuten` })}. Solange der Health Factor unter deinem Schwellenwert bleibt, sendet jede Prüfung eine weitere Nachricht über jeden Kanal, den du gewählt hast.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping prüft ${plural("de", minutes, { one: "jede Minute", other: `alle ${minutes} Minuten` })}. Solange der Health Factor unter deinem Schwellenwert bleibt, bekommst du alle ${repeatMinutes} Minuten eine Nachricht über jeden Kanal, den du gewählt hast.`,
     guideThreshold: "So wählst du einen Schwellenwert",
     guideAlerts: "So funktionieren Alerts",
     morphoDashboard: "Du leihst auf Morpho? Öffne das Morpho-Dashboard",

@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Morpho Blue és Midnight pozíciók és health factor-riasztások",
     intro: networks =>
       `A hitelpozícióid a Morpho alkalmazásban listázott piacokon, a következő hálózatokon: ${networks}. Változó kamatozású hitelek (Morpho Blue) és fix kamatozású hitelek (Morpho Midnight). A health factort a láncról olvassuk ki.`,
-    checks: minutes =>
-      `A riasztásokat ${minutes} percenként ellenőrizzük. Egy fix kamatozású hitelhez a lejárat előtt 7 nappal és 1 nappal emlékeztető is jár, a lejárat után pedig minden ellenőrzéskor riasztás, amíg adósság marad.`,
+    checks: (minutes, repeatMinutes) =>
+      `A riasztásokat ${minutes} percenként ellenőrizzük. Egy fix kamatozású hitelhez a lejárat előtt 7 nappal és 1 nappal emlékeztető is jár, a lejárat után pedig ${repeatMinutes} percenként riasztás, amíg adósság marad.`,
     access: "Egyetlen hozzáférési díj fedezi az Aave- és a Morpho-riasztásaidat is.",
     notAffiliated: "A Tokenping nem kapcsolódik a Morphóhoz.",
     guideHealthFactor: "Hogyan működik a Morpho health factor",

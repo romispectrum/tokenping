@@ -7,6 +7,7 @@ import { NO_DEBT_HEALTH_FACTOR } from "~~/services/morpho/math";
 import type { BlueMarketParams, MidnightMarketParams, MorphoReading } from "~~/services/morpho/types";
 import type { EnabledConfigRow } from "~~/services/notifications/configRepository";
 import {
+  AAVE_READ_BUDGET_MS,
   MORPHO_READ_BUDGET_MS,
   buildAlertEmail,
   buildAlertText,
@@ -14,7 +15,7 @@ import {
   runNotificationCheck,
 } from "~~/services/notifications/runNotificationCheck";
 import { sendSignalMessage } from "~~/services/signal/sendSignal";
-import { sendTelegramMessage } from "~~/services/telegram/sendTelegram";
+import { chatHoldsUsername, sendTelegramMessage } from "~~/services/telegram/sendTelegram";
 
 vi.mock("~~/services/supabase/supabaseServer", async () => {
   const { fakeSupabase } = await import("~~/services/api/server/testing/fakeSupabase");
@@ -24,7 +25,7 @@ vi.mock("~~/services/aave/getHealthFactor", () => ({ getHealthFactorForWallet: v
 vi.mock("~~/services/morpho/health", () => ({ readBlueHealth: vi.fn(), readMidnightHealth: vi.fn() }));
 vi.mock("~~/services/email/sendEmail", () => ({ sendEmail: vi.fn() }));
 vi.mock("~~/services/signal/sendSignal", () => ({ sendSignalMessage: vi.fn() }));
-vi.mock("~~/services/telegram/sendTelegram", () => ({ sendTelegramMessage: vi.fn() }));
+vi.mock("~~/services/telegram/sendTelegram", () => ({ chatHoldsUsername: vi.fn(), sendTelegramMessage: vi.fn() }));
 
 const NOW = new Date("2026-10-14T09:05:07.000Z");
 const NOW_TEXT = "Oct 14, 2026, 9:05:07 AM Coordinated Universal Time";
@@ -41,8 +42,11 @@ const configsPage = (from: number) =>
   `.eq("enabled",true).order("id").range(${from},${from + 999})`;
 const chatsPage = (from: number) =>
   `telegram_chats.select("username, chat_id").order("chat_id").range(${from},${from + 999})`;
+const sendsPage = (from: number) =>
+  `notification_alert_sends.select("config_id, channel, sent_at").order("config_id").order("channel").range(${from},${from + 999})`;
 const CONFIGS_QUERY = configsPage(0);
 const CHATS_QUERY = chatsPage(0);
+const SENDS_QUERY = sendsPage(0);
 const deleteByChat = (chatId: string) => `telegram_chats.delete().eq("chat_id","${chatId}")`;
 const deletes = () => fakeSupabase.log().filter(query => query.includes(".delete()"));
 
@@ -102,6 +106,8 @@ beforeEach(() => {
   vi.mocked(sendSignalMessage).mockResolvedValue({ success: true });
   vi.mocked(sendTelegramMessage).mockReset();
   vi.mocked(sendTelegramMessage).mockResolvedValue({ success: true });
+  vi.mocked(chatHoldsUsername).mockReset();
+  vi.mocked(chatHoldsUsername).mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -120,7 +126,7 @@ describe("runNotificationCheck: loading", () => {
     givenData([]);
     const result = await runNotificationCheck();
     expect(JSON.stringify(result)).toBe(JSON.stringify(summary()));
-    expect(fakeSupabase.log()).toEqual([CONFIGS_QUERY, CHATS_QUERY]);
+    expect(fakeSupabase.log()).toEqual([CONFIGS_QUERY, CHATS_QUERY, SENDS_QUERY]);
   });
 
   it("reads enabled configs and Telegram chats past the 1000-row page limit (B3.7)", async () => {
@@ -130,7 +136,10 @@ describe("runNotificationCheck: loading", () => {
     );
     const chats = Array.from({ length: 1003 }, (_, i) => ({ username: `user_${i}`, chat_id: `${i}` }));
     fakeSupabase.respond(query => ({
-      data: sliceByRange(query, query.table === "notification_configs" ? configs : chats),
+      data:
+        query.table === "notification_alert_sends"
+          ? []
+          : sliceByRange(query, query.table === "notification_configs" ? configs : chats),
     }));
     vi.mocked(getHealthFactorForWallet).mockResolvedValue({
       healthFactor: "3.00",
@@ -146,6 +155,7 @@ describe("runNotificationCheck: loading", () => {
       chatsPage(0),
       chatsPage(1000),
       chatsPage(1003),
+      SENDS_QUERY,
     ]);
   });
 
@@ -490,10 +500,11 @@ describe("runNotificationCheck: delivery", () => {
     givenData([configRow({ chain_id: 1 }), configRow({ chain_id: 2 })]);
     vi.mocked(getHealthFactorForWallet)
       .mockResolvedValueOnce({ healthFactor: "1.20", healthFactorValue: 1.2, chainName: "Ethereum" })
-      .mockImplementationOnce(async () => {
-        vi.setSystemTime(new Date("2026-12-31T23:59:59.000Z"));
-        return { healthFactor: "1.10", healthFactorValue: 1.1, chainName: "Polygon" };
-      });
+      .mockResolvedValueOnce({ healthFactor: "1.10", healthFactorValue: 1.1, chainName: "Polygon" });
+    vi.mocked(sendEmail).mockImplementationOnce(async () => {
+      vi.setSystemTime(new Date("2026-12-31T23:59:59.000Z"));
+      return { success: true, id: "e1" };
+    });
 
     await runNotificationCheck();
 
@@ -644,7 +655,7 @@ describe("runNotificationCheck: delivery", () => {
       summary({ configsChecked: 2, emailsSent: 1, errors: ["telegram:***: blocked"] }),
     );
     expect(sendTelegramMessage).toHaveBeenCalledOnce();
-    expect(consoleError).toHaveBeenCalledWith("Notification check: could not remove the dead Telegram chat 555", {
+    expect(consoleError).toHaveBeenCalledWith("Notification check: could not remove the Telegram chat 555", {
       message: "delete failed",
     });
   });
@@ -703,6 +714,122 @@ describe("runNotificationCheck: delivery", () => {
       throw new Error("db down");
     });
     expect(await runNotificationCheck()).toEqual({ success: false, error: "db down" });
+  });
+});
+
+describe("runNotificationCheck: the repeat limit", () => {
+  const CONFIG_ID = "11111111-1111-1111-1111-111111111111";
+  const row = () => configRow({ id: CONFIG_ID, services: ["email", "signal"] });
+  const minutesAgo = (minutes: number) => new Date(NOW.getTime() - minutes * 60_000).toISOString();
+  const lastSend = (channel: string, minutes: number) => ({
+    config_id: CONFIG_ID,
+    channel,
+    sent_at: minutesAgo(minutes),
+  });
+  const given = (sends: Row[]) =>
+    fakeSupabase.respondByQuery({
+      [CONFIGS_QUERY]: { data: [row()] },
+      [CHATS_QUERY]: { data: [] },
+      [SENDS_QUERY]: { data: sends },
+    });
+  const writes = () => fakeSupabase.log().filter(query => query.startsWith("notification_alert_sends.upsert"));
+
+  it("sends the first alert on every channel and remembers it", async () => {
+    given([]);
+    expect(await runNotificationCheck()).toMatchObject({ emailsSent: 1, signalSent: 1 });
+    expect(writes()).toEqual([
+      `notification_alert_sends.upsert(${JSON.stringify([
+        { config_id: CONFIG_ID, channel: "email", sent_at: NOW.toISOString() },
+        { config_id: CONFIG_ID, channel: "signal", sent_at: NOW.toISOString() },
+      ])},${JSON.stringify({ onConflict: "config_id,channel" })})`,
+    ]);
+  });
+
+  it("holds an alert sent within the last 15 minutes back, per channel", async () => {
+    given([lastSend("email", 5), lastSend("signal", 20)]);
+    expect(await runNotificationCheck()).toMatchObject({ emailsSent: 0, signalSent: 1 });
+  });
+
+  it("sends again on the third check after a send, despite a few seconds of cron drift", async () => {
+    given([lastSend("email", 14.9), lastSend("signal", 14.9)]);
+    expect(await runNotificationCheck()).toMatchObject({ emailsSent: 1, signalSent: 1 });
+  });
+
+  it("does not remember a channel that failed, so the next run tries it again", async () => {
+    given([]);
+    vi.mocked(sendEmail).mockResolvedValue({ success: false, error: "refused" });
+    await runNotificationCheck();
+    expect(writes()).toHaveLength(1);
+    expect(writes()[0]).toContain('"channel":"signal"');
+    expect(writes()[0]).not.toContain('"channel":"email"');
+  });
+
+  it("clears the alert once the position recovers, so the next dip alerts at once", async () => {
+    given([lastSend("email", 5)]);
+    vi.mocked(getHealthFactorForWallet).mockResolvedValue({
+      healthFactor: "2.00",
+      healthFactorValue: 2,
+      chainName: "Base",
+    });
+    await runNotificationCheck();
+    expect(deletes()).toEqual([`notification_alert_sends.delete().eq("config_id","${CONFIG_ID}")`]);
+  });
+
+  it("keeps the times when the position could not be read", async () => {
+    given([lastSend("email", 5)]);
+    vi.mocked(getHealthFactorForWallet).mockResolvedValue(null);
+    await runNotificationCheck();
+    expect(deletes()).toEqual([]);
+  });
+
+  it("sends without a limit when the times cannot be read: a safety alert is never held back", async () => {
+    fakeSupabase.respondByQuery({
+      [CONFIGS_QUERY]: { data: [row()] },
+      [CHATS_QUERY]: { data: [] },
+      [SENDS_QUERY]: { error: { message: "no table" } },
+    });
+    const result = await runNotificationCheck();
+    expect(result).toMatchObject({ emailsSent: 1, signalSent: 1 });
+    expect(result.success && result.errors).toEqual([
+      "alert sends: query failed, the repeat limit is off this run: no table",
+    ]);
+  });
+});
+
+describe("runNotificationCheck: reading Aave positions", () => {
+  it("records a chain that hangs at the time limit and still alerts the others", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    vi.setSystemTime(NOW);
+    givenData([configRow({ chain_id: 1 }), configRow({ chain_id: 8453 })]);
+    vi.mocked(getHealthFactorForWallet).mockImplementation((_user, chainId) =>
+      chainId === 1
+        ? new Promise(() => undefined)
+        : Promise.resolve({ healthFactor: "1.20", healthFactorValue: 1.2, chainName: "Base" }),
+    );
+
+    const run = runNotificationCheck();
+    await vi.advanceTimersByTimeAsync(MORPHO_READ_BUDGET_MS + AAVE_READ_BUDGET_MS);
+    const result = await run;
+
+    expect(result).toMatchObject({ emailsSent: 1 });
+    expect(result.success && result.errors).toEqual([
+      `healthFactor:${SHORT_LOWER}:1: not read within this run's time limit`,
+    ]);
+  });
+});
+
+describe("runNotificationCheck: a Telegram chat that gave its username up", () => {
+  it("unlinks the chat instead of messaging it, and still sends the other channels", async () => {
+    givenData([configRow({ chain_id: 1, services: ["telegram", "email"] })], [ALICE_CHAT]);
+    vi.mocked(chatHoldsUsername).mockResolvedValue(false);
+
+    const result = await runNotificationCheck();
+
+    expect(vi.mocked(chatHoldsUsername).mock.calls).toEqual([["555", "alice_eth"]]);
+    expect(sendTelegramMessage).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ emailsSent: 1, telegramSent: 0 });
+    expect(deletes()).toEqual([deleteByChat("555")]);
+    expect(result.success && result.errors).toEqual(["telegram:***: the chat no longer holds the alert's username"]);
   });
 });
 

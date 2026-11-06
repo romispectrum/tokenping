@@ -143,6 +143,38 @@ describe("fetchMorphoListing", () => {
     });
   });
 
+  it("reads every page of a market's pre-liquidation contracts", async () => {
+    const address = (index: number) => `0x${index.toString(16).padStart(40, "0")}`;
+    const items = (from: number, count: number) =>
+      Array.from({ length: count }, (_, index) => ({ address: address(from + index) }));
+    const skips: unknown[] = [];
+    const fetchImpl = fakeFetch(({ variables }) => {
+      skips.push(variables.skip);
+      const page = variables.skip === 0 ? items(1, 100) : items(101, 3);
+      return { data: { marketById: { marketId: variables.marketId, listed: true, preLiquidations: { items: page } } } };
+    }, noMidnight);
+
+    const listing = await fetchMorphoListing("morpho-blue", 1, id("ab"), fetchImpl as unknown as typeof fetch);
+
+    expect(skips).toEqual([0, 100]);
+    expect(listing?.preLiquidations).toHaveLength(103);
+  });
+
+  it("stops at the page limit on a market flooded with contracts", async () => {
+    let calls = 0;
+    const items = Array.from({ length: 100 }, (_, index) => ({
+      address: `0x${(index + 1).toString(16).padStart(40, "0")}`,
+    }));
+    const fetchImpl = fakeFetch(({ variables }) => {
+      calls++;
+      return { data: { marketById: { marketId: variables.marketId, listed: true, preLiquidations: { items } } } };
+    }, noMidnight);
+
+    await fetchMorphoListing("morpho-blue", 1, id("ab"), fetchImpl as unknown as typeof fetch);
+
+    expect(calls).toBe(5);
+  });
+
   it("returns null for a market the API does not know, or answers about another one", async () => {
     const unknown = fakeFetch(() => ({ data: { marketById: null } }), noMidnight);
     expect(await fetchMorphoListing("morpho-blue", 1, id("ab"), unknown as unknown as typeof fetch)).toBe(null);

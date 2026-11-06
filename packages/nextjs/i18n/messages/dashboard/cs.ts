@@ -13,8 +13,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Kolik upozornění stojí a jak často kontrolujeme",
     alertsCost: (channels, paymentChain) =>
       `Pokud chcete dostat zprávu přes ${channels}, když health factor na některém trhu klesne pod zvolený práh, odemkněte upozornění platbou v USDC${paymentChain ? ` na síti ${paymentChain}` : ""}. Aktuální cenu uvidíte před zaplacením.`,
-    checks: minutes =>
-      `Tokenping kontroluje ${plural("cs", minutes, { one: "každou minutu", few: `každé ${minutes} minuty`, other: `každých ${minutes} minut` })}. Dokud health factor zůstává pod vaším prahem, každá kontrola pošle další zprávu do každého kanálu, který jste zvolili.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping kontroluje ${plural("cs", minutes, { one: "každou minutu", few: `každé ${minutes} minuty`, other: `každých ${minutes} minut` })}. Dokud health factor zůstává pod vaším prahem, dostanete každých ${repeatMinutes} minut zprávu do každého kanálu, který jste zvolili.`,
     guideThreshold: "Jak zvolit práh",
     guideAlerts: "Jak fungují upozornění",
     morphoDashboard: "Půjčujete si na Morpho? Otevřete přehled Morpho",

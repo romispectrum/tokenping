@@ -178,3 +178,6 @@ export const htmlToMarkdown = (html: string, url: string): string | undefined =>
     language: String(findElement(tree, ({ tagName }) => tagName === "html")?.properties.lang ?? ""),
   })}\n\n${body}`;
 };
+
+/** A page's converted markdown by path, kept per server instance. The sitemap bounds it. */
+export const convertedPages = new Map<string, { markdown: string; expiresAt: number }>();

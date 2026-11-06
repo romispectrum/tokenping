@@ -82,7 +82,7 @@ describe("Czech Aave page shell", () => {
       "Pokud chcete dostat zprávu přes Signal nebo e-mail, když health factor na některém trhu klesne pod zvolený práh, odemkněte upozornění platbou v USDC na síti Arbitrum One.",
     );
     expect(html).toContain(
-      "Tokenping kontroluje každých 5 minut. Dokud health factor zůstává pod vaším prahem, každá kontrola pošle další zprávu do každého kanálu, který jste zvolili.",
+      "Tokenping kontroluje každých 5 minut. Dokud health factor zůstává pod vaším prahem, dostanete každých 15 minut zprávu do každého kanálu, který jste zvolili.",
     );
     expect(html).toContain('<div data-stub="aave-dashboard">');
     expect(html).not.toMatch(new RegExp(`[${String.fromCharCode(0x2013, 0x2014)}]`));

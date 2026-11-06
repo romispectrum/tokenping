@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Posisi Morpho Blue dan Midnight serta peringatan faktor kesehatan",
     intro: networks =>
       `Posisi pinjaman Anda di pasar yang tercantum di aplikasi Morpho, di ${networks}: pinjaman bunga mengambang (Morpho Blue) dan pinjaman bunga tetap (Morpho Midnight). Faktor kesehatan dibaca dari blockchain.`,
-    checks: minutes =>
-      `Peringatan diperiksa setiap ${minutes} menit. Pinjaman bunga tetap juga mendapat pengingat 7 hari dan 1 hari sebelum jatuh tempo, serta peringatan di setiap pemeriksaan setelah jatuh tempo selama masih ada utang.`,
+    checks: (minutes, repeatMinutes) =>
+      `Peringatan diperiksa setiap ${minutes} menit. Pinjaman bunga tetap juga mendapat pengingat 7 hari dan 1 hari sebelum jatuh tempo, serta peringatan setiap ${repeatMinutes} menit setelah jatuh tempo selama masih ada utang.`,
     access: "Satu pembayaran akses mencakup peringatan Aave dan Morpho Anda.",
     notAffiliated: "Tokenping tidak berafiliasi dengan Morpho.",
     guideHealthFactor: "Cara kerja faktor kesehatan Morpho",

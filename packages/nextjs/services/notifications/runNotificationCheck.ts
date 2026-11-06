@@ -8,6 +8,7 @@ import type { Locale } from "~~/i18n/locales";
 import { NOTIFICATION_MESSAGES } from "~~/i18n/messages/notifications";
 import { getHealthFactorForWallet } from "~~/services/aave/getHealthFactor";
 import { sendEmail } from "~~/services/email/sendEmail";
+import { clearAlertSends, getLastAlertSends, isAlertDue, recordAlertSends } from "~~/services/notifications/alertSends";
 import {
   type EnabledConfigRow,
   findEnabledConfigs,
@@ -24,9 +25,10 @@ import {
   toMorphoAlert,
 } from "~~/services/notifications/morphoAlerts";
 import { buildMaturityMessage, buildMorphoAlert } from "~~/services/notifications/morphoMessages";
+import { readWithinBudget } from "~~/services/notifications/readWithinBudget";
 import { type Delivery, redactRecipients, shortenAddress } from "~~/services/notifications/redact";
 import { sendSignalMessage } from "~~/services/signal/sendSignal";
-import { type TelegramSendErrorCode, sendTelegramMessage } from "~~/services/telegram/sendTelegram";
+import { type TelegramSendErrorCode, chatHoldsUsername, sendTelegramMessage } from "~~/services/telegram/sendTelegram";
 import { deleteTelegramChat, getChatIdsByUsername } from "~~/services/telegram/telegramChats";
 import type { NotificationService } from "~~/types/notifications";
 import { getErrorMessage } from "~~/utils/errors";
@@ -62,6 +64,12 @@ const DEAD_CHAT_CODES: readonly TelegramSendErrorCode[] = ["bot_blocked", "chat_
  * in `errors` and read on the next run, so a slow chain cannot hold up the Aave alerts that follow.
  */
 export const MORPHO_READ_BUDGET_MS = 20_000;
+
+/**
+ * The same for the Aave reads, which follow, chains in parallel: a chain whose RPCs hang costs this much at most, not its
+ * 10-second timeouts one config after another.
+ */
+export const AAVE_READ_BUDGET_MS = 40_000;
 
 /** The alert's text (Signal, Telegram and the email's plain part) in `locale`, English by default. */
 export const buildAlertText = ({ chainName, healthFactor, threshold, timestamp }: Alert, locale: Locale = "en") =>
@@ -117,9 +125,10 @@ export const ALERT_SENDERS: Record<NotificationService, AlertSender> = {
 /**
  * One cron pass: loads the enabled configs and alerts every deliverable channel of each one that calls for it. Morpho
  * configs come first: their positions are read together (readMorphoPositions), then each reading is acted on (a health
- * alert, a Midnight maturity reminder or alert). Then each Aave config, one after another: the wallet's health factor
- * in the config's market (the chain's V3 Pool or a V4 Spoke), alerted when below the threshold. A failing config is
- * recorded in `errors` without stopping the others; a protocol this version does not know is left alone.
+ * alert, a Midnight maturity reminder or alert). Then the Aave configs, read together the same way: the wallet's health
+ * factor in the config's market (the chain's V3 Pool or a V4 Spoke), alerted when below the threshold. An alert repeats
+ * every ALERT_REPEAT_MINUTES per channel while the position stays below it (alertSends.ts). A failing config is recorded
+ * in `errors` without stopping the others; a protocol this version does not know is left alone.
  */
 export async function runNotificationCheck(): Promise<NotificationCheckResult | { success: false; error: string }> {
   try {
@@ -144,14 +153,29 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       recordError(`telegram: chats query failed, Telegram alerts skipped this run: ${chatsError.message}`);
     }
 
+    const { lastSends, error: sendsError } = await getLastAlertSends();
+    if (sendsError) {
+      recordError(`alert sends: query failed, the repeat limit is off this run: ${sendsError.message}`);
+    }
+
     const configs = rows.filter(
       row => rowProtocol(row) !== null && getDeliverableChannels(row, chatIdsByUsername).length > 0,
     );
     const sent: Record<NotificationService, number> = { email: 0, signal: 0, telegram: 0 };
 
+    /** Removes a chat for good; its owner gets alerts again by sending /start to the bot. */
+    const forgetChat = async (chatId: string) => {
+      const deleteError = await deleteTelegramChat(chatId);
+      if (deleteError) console.error(`Notification check: could not remove the Telegram chat ${chatId}`, deleteError);
+      for (const [username, linkedChatId] of chatIdsByUsername) {
+        if (linkedChatId === chatId) chatIdsByUsername.delete(username);
+      }
+    };
+
     /**
      * Sends the message on each delivery, in the channel's own language (the config's when it has none), each language
-     * built once. Returns how many channels it reached.
+     * built once. Returns the channels it reached. A Telegram chat whose owner gave the username up is unlinked
+     * instead of messaged: the alert belongs to whoever holds the username now.
      */
     const deliver = async (
       config: EnabledConfigRow,
@@ -159,30 +183,52 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       buildMessage: (locale: Locale) => AlertMessage,
     ) => {
       const messages: Partial<Record<Locale, AlertMessage>> = {};
-      let delivered = 0;
+      const delivered: NotificationService[] = [];
       for (const delivery of deliveries) {
         const { channel, recipient } = delivery;
+        if (channel === "telegram" && !(await chatHoldsUsername(recipient, config.telegram_username))) {
+          recordError(`telegram:${recipient}: the chat no longer holds the alert's username`, {
+            deliveries: [delivery],
+          });
+          await forgetChat(recipient);
+          continue;
+        }
         const locale = rowChannelLocale(config, channel);
         const result = await ALERT_SENDERS[channel](recipient, (messages[locale] ??= buildMessage(locale)));
         if (result.success) {
           sent[channel]++;
-          delivered++;
+          delivered.push(channel);
           continue;
         }
 
         recordError(`${channel}:${recipient}: ${result.error}`, { deliveries: [delivery] });
-        if (channel === "telegram" && result.code && DEAD_CHAT_CODES.includes(result.code)) {
-          // Its owner gets alerts again by sending /start to the bot.
-          const deleteError = await deleteTelegramChat(recipient);
-          if (deleteError) {
-            console.error(`Notification check: could not remove the dead Telegram chat ${recipient}`, deleteError);
-          }
-          for (const [username, chatId] of chatIdsByUsername) {
-            if (chatId === recipient) chatIdsByUsername.delete(username);
-          }
-        }
+        if (channel === "telegram" && result.code && DEAD_CHAT_CODES.includes(result.code)) await forgetChat(recipient);
       }
       return delivered;
+    };
+
+    /** A health or matured alert: only the channels due, remembering which ones it reached. */
+    const deliverRepeating = async (
+      config: EnabledConfigRow,
+      deliveries: readonly Delivery[],
+      buildMessage: (locale: Locale) => AlertMessage,
+    ) => {
+      const now = new Date();
+      const due = deliveries.filter(({ channel }) => isAlertDue(lastSends, config.id, channel, now.getTime()));
+      const delivered = await deliver(config, due, buildMessage);
+      if (delivered.length === 0) return;
+      const error = await recordAlertSends(config.id, delivered, now);
+      if (error) {
+        const { user_id: userId } = config;
+        recordError(`alert sends:${userId}: could not record a send: ${error.message}`, { wallet: userId });
+      }
+    };
+
+    /** The position no longer calls for an alert, so its next dip alerts at once. */
+    const clearRepeat = async ({ id, user_id: userId }: EnabledConfigRow) => {
+      if (!lastSends.has(id)) return;
+      const error = await clearAlertSends(id);
+      if (error) recordError(`alert sends:${userId}: could not clear: ${error.message}`, { wallet: userId });
     };
 
     const morphoAlerts: MorphoAlert<EnabledConfigRow>[] = [];
@@ -214,24 +260,26 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
         const threshold = normalizeThreshold(config.health_factor_threshold, MORPHO_THRESHOLD_RANGE);
         const now = new Date();
         const input = { chainName: chain.name, params, reading, now };
-        for (const notice of morphoNotices(params, reading, threshold)) {
+        const notices = morphoNotices(params, reading, threshold);
+        if (!notices.some(notice => notice.kind === "health" || notice.stage === "matured")) await clearRepeat(config);
+        for (const notice of notices) {
           if (notice.kind === "health") {
-            await deliver(config, deliveries, locale => buildMorphoAlert({ ...input, threshold, locale }));
+            await deliverRepeating(config, deliveries, locale => buildMorphoAlert({ ...input, threshold, locale }));
             continue;
           }
           const message = (locale: Locale) => buildMaturityMessage({ ...input, stage: notice.stage, locale });
           if (notice.stage === "matured") {
-            await deliver(config, deliveries, message);
+            await deliverRepeating(config, deliveries, message);
             continue;
           }
           // Each reminder once per loan: claimed before the send, given back when no channel took it.
           const sentAt = await claimMaturityReminder(config.id, notice.stage, notice.maturity);
           if (!sentAt) continue;
-          let delivered = 0;
+          let delivered: NotificationService[] = [];
           try {
             delivered = await deliver(config, deliveries, message);
           } finally {
-            if (delivered === 0) {
+            if (delivered.length === 0) {
               const releaseError = await releaseMaturityReminder(config.id, notice.stage, notice.maturity, sentAt);
               if (releaseError) {
                 recordError(`reminder:${userId}:${marketId}: could not give back the ${notice.stage} reminder`, {
@@ -246,28 +294,46 @@ export async function runNotificationCheck(): Promise<NotificationCheckResult | 
       }
     }
 
-    for (const config of configs) {
-      if (rowProtocol(config) !== "aave") continue;
+    const aaveConfigs = configs.filter(row => rowProtocol(row) === "aave");
+    const aaveReadings = await readWithinBudget(
+      aaveConfigs,
+      config => config.chain_id,
+      config =>
+        getHealthFactorForWallet(config.user_id as Address, config.chain_id, rowMarket(config)).catch(
+          (error: unknown) => ({ failed: getErrorMessage(error) }),
+        ),
+      Date.now() + AAVE_READ_BUDGET_MS,
+    );
+
+    for (const [index, config] of aaveConfigs.entries()) {
       const { user_id: userId, chain_id: chainId } = config;
       const market = rowMarket(config);
       // How errors name the market: the chain id for V3, as before V4, else "chain:spoke".
       const marketId = market === V3_MARKET_ID ? String(chainId) : marketKey(chainId, market);
       // Computed per config: a dead Telegram chat removed below is skipped for every later config that names it.
       const deliveries = getDeliverableChannels(config, chatIdsByUsername);
+      const reading = aaveReadings[index];
 
       try {
         const threshold = normalizeThreshold(config.health_factor_threshold);
 
-        const reading = await getHealthFactorForWallet(userId as Address, chainId, market);
+        if (reading === TIMED_OUT) {
+          recordError(`healthFactor:${userId}:${marketId}: not read within this run's time limit`, { wallet: userId });
+          continue;
+        }
+        if (reading && "failed" in reading) throw new Error(reading.failed);
         if (!reading) {
           recordError(`healthFactor:${userId}:${marketId}: could not read the health factor`, { wallet: userId });
           continue;
         }
         // Compared exactly, not as the rounded display value (1.4996 must alert against a 1.5 threshold).
-        if (!(reading.healthFactorValue < threshold)) continue;
+        if (!(reading.healthFactorValue < threshold)) {
+          await clearRepeat(config);
+          continue;
+        }
 
         const now = new Date();
-        await deliver(config, deliveries, locale => {
+        await deliverRepeating(config, deliveries, locale => {
           const alert = { ...reading, threshold, timestamp: formatUtcTimestamp(now, locale) };
           return { text: buildAlertText(alert, locale), ...buildAlertEmail(alert, locale) };
         });

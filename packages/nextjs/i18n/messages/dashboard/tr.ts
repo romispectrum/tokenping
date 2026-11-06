@@ -16,8 +16,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Uyarıların fiyatı ve kontrol sıklığı",
     alertsCost: (channels, paymentChain) =>
       `Bir piyasanın sağlık faktörü seçtiğiniz eşiğin altına düştüğünde ${channels} üzerinden mesaj almak için uyarıları ${paymentChain ? `${paymentChain} ağında ` : ""}bir USDC ödemesiyle açın. Güncel fiyat, ödemeden önce gösterilir.`,
-    checks: minutes =>
-      `Tokenping her ${minutes} dakikada bir kontrol eder. Sağlık faktörü eşiğinizin altında kaldığı sürece her kontrol, seçtiğiniz her kanala yeni bir mesaj gönderir.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping her ${minutes} dakikada bir kontrol eder. Sağlık faktörü eşiğinizin altında kaldığı sürece seçtiğiniz her kanala ${repeatMinutes} dakikada bir mesaj gönderilir.`,
     guideThreshold: "Eşik nasıl seçilir",
     guideAlerts: "Uyarılar nasıl çalışır",
     morphoDashboard: "Morpho'da mı borç alıyorsunuz? Morpho panelini açın",

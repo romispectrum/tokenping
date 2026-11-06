@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Vị thế Morpho Blue, Midnight và cảnh báo hệ số sức khỏe",
     intro: networks =>
       `Các vị thế vay của bạn trong những thị trường mà ứng dụng Morpho liệt kê, trên các mạng ${networks}: khoản vay lãi suất thả nổi (Morpho Blue) và khoản vay lãi suất cố định (Morpho Midnight). Hệ số sức khỏe được đọc trực tiếp từ blockchain.`,
-    checks: minutes =>
-      `Cảnh báo được kiểm tra ${minutes} phút một lần. Khoản vay lãi suất cố định còn nhận lời nhắc 7 ngày và 1 ngày trước ngày đáo hạn, và một cảnh báo ở mỗi lần kiểm tra sau ngày đáo hạn khi vẫn còn nợ.`,
+    checks: (minutes, repeatMinutes) =>
+      `Cảnh báo được kiểm tra ${minutes} phút một lần. Khoản vay lãi suất cố định còn nhận lời nhắc 7 ngày và 1 ngày trước ngày đáo hạn, và một cảnh báo mỗi ${repeatMinutes} phút sau ngày đáo hạn khi vẫn còn nợ.`,
     access: "Một lần thanh toán quyền truy cập áp dụng cho cả cảnh báo Aave và Morpho của bạn.",
     notAffiliated: "Tokenping không liên kết với Morpho.",
     guideHealthFactor: "Cách hệ số sức khỏe trên Morpho hoạt động",

@@ -16,8 +16,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Πόσο κοστίζουν οι ειδοποιήσεις και πόσο συχνά ελέγχουμε",
     alertsCost: (channels, paymentChain) =>
       `Για να λαμβάνετε μήνυμα μέσω ${channels} όταν το health factor μιας αγοράς πέσει κάτω από ένα όριο που επιλέγετε, ξεκλειδώστε τις ειδοποιήσεις με πληρωμή σε USDC${paymentChain ? ` στο δίκτυο ${paymentChain}` : ""}. Η τρέχουσα τιμή εμφανίζεται πριν πληρώσετε.`,
-    checks: minutes =>
-      `Το Tokenping ελέγχει ${plural("el", minutes, { one: "κάθε λεπτό", other: `κάθε ${minutes} λεπτά` })}. Όσο το health factor μένει κάτω από το όριό σας, κάθε έλεγχος στέλνει νέο μήνυμα σε κάθε κανάλι που επιλέξατε.`,
+    checks: (minutes, repeatMinutes) =>
+      `Το Tokenping ελέγχει ${plural("el", minutes, { one: "κάθε λεπτό", other: `κάθε ${minutes} λεπτά` })}. Όσο το health factor μένει κάτω από το όριό σας, λαμβάνετε μήνυμα κάθε ${repeatMinutes} λεπτά σε κάθε κανάλι που επιλέξατε.`,
     guideThreshold: "Πώς να επιλέξετε όριο",
     guideAlerts: "Πώς λειτουργούν οι ειδοποιήσεις",
     morphoDashboard: "Δανείζεστε στο Morpho; Ανοίξτε τον πίνακα ελέγχου Morpho",

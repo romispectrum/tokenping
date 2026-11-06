@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Morpho Blue und Midnight: Positionen und Health-Factor-Alerts",
     intro: networks =>
       `Deine Kreditpositionen in den Märkten, die die Morpho-App listet, auf ${networks}: Kredite mit variablem Zinssatz (Morpho Blue) und mit festem Zinssatz (Morpho Midnight). Die Health Factors werden direkt aus der Blockchain gelesen.`,
-    checks: minutes =>
-      `Alerts werden ${plural("de", minutes, { one: "jede Minute", other: `alle ${minutes} Minuten` })} geprüft. Ein Kredit mit festem Zinssatz bekommt außerdem 7 Tage und 1 Tag vor der Fälligkeit eine Erinnerung und nach der Fälligkeit bei jeder Prüfung einen Alert, solange Schulden offen sind.`,
+    checks: (minutes, repeatMinutes) =>
+      `Alerts werden ${plural("de", minutes, { one: "jede Minute", other: `alle ${minutes} Minuten` })} geprüft. Ein Kredit mit festem Zinssatz bekommt außerdem 7 Tage und 1 Tag vor der Fälligkeit eine Erinnerung und nach der Fälligkeit alle ${repeatMinutes} Minuten einen Alert, solange Schulden offen sind.`,
     access: "Eine Zahlung für den Zugang deckt deine Alerts für Aave und Morpho ab.",
     notAffiliated: "Tokenping ist nicht mit Morpho verbunden.",
     guideHealthFactor: "So funktioniert der Health Factor bei Morpho",

@@ -16,8 +16,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Ile kosztują alerty i jak często sprawdzamy",
     alertsCost: (channels, paymentChain) =>
       `Aby dostać wiadomość przez ${channels}, gdy współczynnik zdrowia na którymś rynku spadnie poniżej wybranego progu, odblokuj alerty płatnością w USDC${paymentChain ? ` w sieci ${paymentChain}` : ""}. Aktualną cenę zobaczysz przed zapłatą.`,
-    checks: minutes =>
-      `Tokenping sprawdza ${plural("pl", minutes, { one: "co minutę", few: `co ${minutes} minuty`, many: `co ${minutes} minut`, other: `co ${minutes} minuty` })}. Dopóki współczynnik zdrowia pozostaje poniżej twojego progu, każde sprawdzenie wysyła kolejną wiadomość w każdym wybranym kanale.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping sprawdza ${plural("pl", minutes, { one: "co minutę", few: `co ${minutes} minuty`, many: `co ${minutes} minut`, other: `co ${minutes} minuty` })}. Dopóki współczynnik zdrowia pozostaje poniżej twojego progu, dostajesz wiadomość co ${repeatMinutes} minut w każdym wybranym kanale.`,
     guideThreshold: "Jak wybrać próg",
     guideAlerts: "Jak działają alerty",
     morphoDashboard: "Pożyczasz w Morpho? Otwórz panel Morpho",

@@ -27,6 +27,7 @@ describe("sendSignalMessage", () => {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer relay-token" },
       body: '{"message":"HF alert","number":"+14155550123","recipients":["alice.42"]}',
+      signal: expect.any(AbortSignal),
     });
   });
 

@@ -1,4 +1,12 @@
-import { type Address, ContractFunctionRevertedError, type Hex, getAddress } from "viem";
+import {
+  type Address,
+  ContractFunctionRevertedError,
+  type Hex,
+  encodeAbiParameters,
+  getAddress,
+  keccak256,
+  parseAbiParameters,
+} from "viem";
 import { describe, expect, it, vi } from "vitest";
 import { getMorphoChain } from "~~/config/morpho";
 import { MORPHO_MIDNIGHT_ABI } from "~~/services/morpho/abis";
@@ -13,7 +21,6 @@ import type { BlueMarketParams } from "~~/services/morpho/types";
 
 const ETHEREUM = getMorphoChain(1)!;
 const ARBITRUM = getMorphoChain(42161)!;
-const MARKET = `0x${"ab".repeat(32)}` as Hex;
 const OTHER_MARKET = `0x${"cd".repeat(32)}` as Hex;
 const USDC = "0x00000000000000000000000000000000000000b1" as Address;
 const OETH = "0x00000000000000000000000000000000000000b2" as Address;
@@ -23,6 +30,12 @@ const PRE_A = "0x00000000000000000000000000000000000000d1" as Address;
 const PRE_B = "0x00000000000000000000000000000000000000d2" as Address;
 const PRE_ORACLE = "0x00000000000000000000000000000000000000e2" as Address;
 const ZERO = "0x0000000000000000000000000000000000000000" as Address;
+const LLTV = 860000000000000000n;
+const MARKET_PARAMS = [USDC, OETH, ORACLE, IRM, LLTV] as const;
+/** A Blue market's id is the hash of its parameters. */
+const MARKET = keccak256(
+  encodeAbiParameters(parseAbiParameters("address, address, address, address, uint256"), MARKET_PARAMS),
+);
 
 const success = (result: unknown) => ({ status: "success", result });
 const failure = () => ({ status: "failure", error: new Error("reverted") });
@@ -62,9 +75,20 @@ const blueAnswer =
   };
 
 describe("readBlueMarketParams", () => {
+  it("refuses parameters that do not hash to the market's id", async () => {
+    const substituted = success([USDC, OETH, PRE_ORACLE, IRM, LLTV]);
+    expect(await readBlueMarketParams(fakeClient(blueAnswer(substituted)), ETHEREUM, MARKET)).toBe(null);
+  });
+
+  it("refuses the read when a factory check failed, so a contract does not vanish on an RPC error", async () => {
+    const answer = blueAnswer(success(MARKET_PARAMS), { [PRE_A]: { fromFactory: true, id: MARKET } });
+    const client = fakeClient(call => (call.functionName === "isPreLiquidation" ? failure() : answer(call)));
+    expect(await readBlueMarketParams(client, ETHEREUM, MARKET, [PRE_A])).toBe(null);
+  });
+
   it("reads the market and keeps only pre-liquidations Morpho's factory made for it", async () => {
     const client = fakeClient(
-      blueAnswer(success([USDC, OETH, ORACLE, IRM, 860000000000000000n]), {
+      blueAnswer(success(MARKET_PARAMS), {
         [PRE_A]: { fromFactory: true, id: MARKET },
         // Made by the factory, but for another market: not this one's line.
         [PRE_B]: { fromFactory: true, id: OTHER_MARKET },
@@ -85,7 +109,7 @@ describe("readBlueMarketParams", () => {
 
   it("drops a pre-liquidation contract the factory does not know, whatever it claims", async () => {
     const client = fakeClient(
-      blueAnswer(success([USDC, OETH, ORACLE, IRM, 860000000000000000n]), {
+      blueAnswer(success(MARKET_PARAMS), {
         [PRE_A]: { fromFactory: false, id: MARKET },
       }),
     );
@@ -106,7 +130,7 @@ describe("readBlueMarketParams", () => {
   it("shows a short address for a token without a readable symbol, but needs its decimals", async () => {
     const noSymbol = fakeClient(call =>
       call.functionName === "idToMarketParams"
-        ? success([USDC, OETH, ORACLE, IRM, 860000000000000000n])
+        ? success(MARKET_PARAMS)
         : call.functionName === "symbol"
           ? failure()
           : success(18),
@@ -114,7 +138,7 @@ describe("readBlueMarketParams", () => {
     expect((await readBlueMarketParams(noSymbol, ETHEREUM, MARKET))?.collateralToken.symbol).toBe("0x0000…00b2");
 
     const noDecimals = fakeClient(call =>
-      call.functionName === "idToMarketParams" ? success([USDC, OETH, ORACLE, IRM, 860000000000000000n]) : failure(),
+      call.functionName === "idToMarketParams" ? success(MARKET_PARAMS) : failure(),
     );
     expect(await readBlueMarketParams(noDecimals, ETHEREUM, MARKET)).toBe(null);
   });
@@ -122,6 +146,8 @@ describe("readBlueMarketParams", () => {
 
 describe("readMidnightMarketParams", () => {
   const market = {
+    chainId: 1n,
+    midnight: ETHEREUM.midnight,
     loanToken: USDC,
     collateralParams: [
       { token: USDC, lltv: 980000000000000000n, oracle: ORACLE },
@@ -149,6 +175,20 @@ describe("readMidnightMarketParams", () => {
       ],
       maturity: 1_793_372_400,
     });
+  });
+
+  it("refuses an answer that is not this chain's or this contract's", async () => {
+    const read = (answer: unknown) =>
+      readMidnightMarketParams(
+        fakeClient(
+          tokens,
+          vi.fn(async () => answer),
+        ),
+        ETHEREUM,
+        MARKET,
+      );
+    expect(await read({ ...market, chainId: 8453n })).toBe(null);
+    expect(await read({ ...market, midnight: USDC })).toBe(null);
   });
 
   it("returns null for an unknown market or a chain without Midnight", async () => {
@@ -197,7 +237,7 @@ const PRE_A_API = getAddress(PRE_A);
 
 const BLUE_CLIENT = () =>
   fakeClient(
-    blueAnswer(success([USDC, OETH, ORACLE, IRM, 860000000000000000n]), {
+    blueAnswer(success(MARKET_PARAMS), {
       [PRE_A_API]: { fromFactory: true, id: MARKET },
     }),
   );
@@ -228,7 +268,13 @@ describe("readListedMarketParams", () => {
   it("reads a listed Midnight market", async () => {
     const client = fakeClient(
       tokens,
-      vi.fn(async () => ({ loanToken: USDC, collateralParams: [], maturity: 1_793_372_400n })),
+      vi.fn(async () => ({
+        chainId: 1n,
+        midnight: ETHEREUM.midnight,
+        loanToken: USDC,
+        collateralParams: [],
+        maturity: 1_793_372_400n,
+      })),
     );
     const params = await readListedMarketParams(
       client,
@@ -265,6 +311,12 @@ describe("refreshMarketParams", () => {
     lltv: "860000000000000000",
     preLiquidations: [],
   };
+
+  it("keeps the stored fixed fields whatever the chain answers now", async () => {
+    const renamed = { ...STORED, loanToken: { ...STORED.loanToken, symbol: "STORED" } };
+    const params = await refreshMarketParams(BLUE_CLIENT(), ETHEREUM, MARKET, renamed, listingFetch({ listed: true }));
+    expect(params).toEqual(renamed);
+  });
 
   it("picks up a pre-liquidation contract added since, even on a market delisted since", async () => {
     const params = await refreshMarketParams(

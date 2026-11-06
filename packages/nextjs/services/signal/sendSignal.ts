@@ -26,6 +26,8 @@ import "server-only";
 import { getErrorMessage } from "~~/utils/errors";
 import { SIGNAL_USERNAME_REGEX, normalizeSignalUsername } from "~~/utils/notifications/validation";
 
+const SIGNAL_FETCH_TIMEOUT_MS = 8_000;
+
 export type SendSignalOptions = {
   /** Stored username without @ prefix, e.g. "alice.42" */
   to: string;
@@ -65,6 +67,7 @@ export async function sendSignalMessage({
         number: sender,
         recipients: [username],
       }),
+      signal: AbortSignal.timeout(SIGNAL_FETCH_TIMEOUT_MS),
     });
 
     if (!response.ok) {

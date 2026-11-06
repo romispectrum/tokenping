@@ -4,7 +4,7 @@ import { MorphoDashboard } from "~~/components/dashboard/MorphoDashboard";
 import { Container } from "~~/components/home/marketingLayout";
 import { PAGE_LINK_CLASS_NAME } from "~~/components/pages/pageLinks";
 import { MORPHO_CHAINS } from "~~/config/morpho";
-import { NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
+import { ALERT_REPEAT_MINUTES, NOTIFICATION_CHECK_INTERVAL_MINUTES } from "~~/constants/notifications";
 import { getPostByKey, isPublished } from "~~/content/blog";
 import { joinList } from "~~/i18n/format";
 import type { Locale } from "~~/i18n/locales";
@@ -57,7 +57,7 @@ export const MorphoPage = ({ locale }: { locale: Locale }) => {
               ),
             )}
           </p>
-          <p className="m-0">{page.checks(NOTIFICATION_CHECK_INTERVAL_MINUTES)}</p>
+          <p className="m-0">{page.checks(NOTIFICATION_CHECK_INTERVAL_MINUTES, ALERT_REPEAT_MINUTES)}</p>
           <p className="m-0">{page.access}</p>
           <p className="m-0">{page.notAffiliated}</p>
           <ul className="m-0 mt-1 flex list-none flex-wrap gap-x-6 gap-y-2 p-0">

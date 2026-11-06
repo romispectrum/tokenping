@@ -10,8 +10,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Posiciones y alertas del factor de salud en Morpho Blue y Midnight",
     intro: networks =>
       `Tus posiciones con deuda en los mercados que figuran en la aplicación de Morpho, en ${networks}: préstamos a tasa variable (Morpho Blue) y préstamos a tasa fija (Morpho Midnight). El factor de salud se lee directamente de la blockchain.`,
-    checks: minutes =>
-      `Las alertas se revisan ${plural("es", minutes, { one: "cada minuto", other: `cada ${minutes} minutos` })}. Un préstamo a tasa fija también recibe un recordatorio 7 días y 1 día antes del vencimiento, y una alerta en cada revisión posterior al vencimiento mientras quede deuda.`,
+    checks: (minutes, repeatMinutes) =>
+      `Las alertas se revisan ${plural("es", minutes, { one: "cada minuto", other: `cada ${minutes} minutos` })}. Un préstamo a tasa fija también recibe un recordatorio 7 días y 1 día antes del vencimiento, y una alerta cada ${repeatMinutes} minutos después del vencimiento mientras quede deuda.`,
     access: "Un solo pago de acceso cubre tus alertas de Aave y de Morpho.",
     notAffiliated: "Tokenping no está afiliado a Morpho.",
     guideHealthFactor: "Cómo funciona el factor de salud en Morpho",

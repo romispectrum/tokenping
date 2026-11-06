@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "~~/app/md/[[...path]]/route";
 import { LOCALES } from "~~/i18n/locales";
 import { routePath } from "~~/i18n/routes";
-import { estimateTokens } from "~~/utils/markdown";
+import { convertedPages, estimateTokens } from "~~/utils/markdown";
 import { CONTENT_SIGNAL } from "~~/utils/robots";
 import { sitemapEntries } from "~~/utils/sitemap";
 
@@ -32,6 +32,7 @@ let fetchMock: ReturnType<typeof vi.fn>;
 let consoleError: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  convertedPages.clear();
   fetchMock = vi.fn(async () => htmlResponse());
   vi.stubGlobal("fetch", fetchMock);
   consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -44,6 +45,16 @@ afterEach(() => {
 });
 
 describe("GET /md/[[...path]]", () => {
+  it("converts a page once, whatever query string or Accept value asks for it", async () => {
+    const first = await get("/aave");
+    const variant = await GET(new NextRequest(`${ORIGIN}/aave?v=2`, { headers: { accept: "text/markdown, x/1" } }), {
+      params: Promise.resolve({ path: ["aave"] }),
+    });
+
+    expect(await variant.text()).toBe(await first.text());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("answers a page with its markdown, its canonical and how to cache it", async () => {
     const response = await get("/aave");
     const markdown = await response.text();

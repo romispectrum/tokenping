@@ -3,6 +3,8 @@ import { DEFAULT_LOCALE, LOCALES, type Locale, isLocale } from "~~/i18n/locales"
 import type { NotificationService } from "~~/types/notifications";
 import { type ThresholdRange, clampThreshold } from "~~/utils/notifications/threshold";
 import {
+  MAX_EMAIL_LENGTH,
+  MAX_SIGNAL_RECIPIENT_LENGTH,
   isNotificationService,
   isValidEmail,
   isValidSignalUsername,
@@ -24,8 +26,7 @@ export type ConfigInput = {
 };
 
 export type ConfigValues = {
-  /** Not validated: stored as sent (default true). */
-  enabled: unknown;
+  enabled: boolean;
   services: NotificationService[];
   healthFactorThreshold: number;
   email: string | null;
@@ -39,6 +40,7 @@ export type ConfigValues = {
 };
 
 const SERVICES_ERROR = `Invalid services: expected an array of ${NOTIFICATION_SERVICES.join(", ")}`;
+const ENABLED_ERROR = "Invalid enabled: expected true or false";
 const THRESHOLD_ERROR = "Invalid healthFactorThreshold: expected a finite number";
 const EMAIL_ERROR = "Invalid email address for email notifications";
 const SIGNAL_ERROR = "Invalid Signal username for Signal notifications. Expected format: alice.42";
@@ -47,9 +49,11 @@ const TELEGRAM_ERROR =
 const LOCALE_ERROR = `Invalid locale: expected one of ${LOCALES.join(", ")}`;
 const CHANNEL_LOCALES_ERROR = `Invalid channelLocales: expected an object of ${NOTIFICATION_SERVICES.join(", ")} to one of ${LOCALES.join(", ")}`;
 
-/** Blank values become null; anything else is stringified. */
-const optionalText = (raw: unknown, normalize: (value: string) => string) =>
-  raw == null ? null : normalize(String(raw)) || null;
+/** Blank values become null, and so does anything over `maxLength`; the rest is stringified. */
+const optionalText = (raw: unknown, normalize: (value: string) => string, maxLength: number) => {
+  const text = raw == null ? "" : normalize(String(raw));
+  return text && text.length <= maxLength ? text : null;
+};
 
 /** Missing or null is no language for any channel, as is a null value; any other key or value is an error (null). */
 const parseChannelLocales = (raw: unknown): Record<NotificationService, Locale | null> | null => {
@@ -67,8 +71,8 @@ const parseChannelLocales = (raw: unknown): Record<NotificationService, Locale |
  * Validates a config write and normalizes it for storage, or returns the first problem (services, threshold, email,
  * Signal, Telegram, locale, channel languages). A missing or null locale is English; a channel without a language
  * of its own is sent in `locale`. Recipients are checked only for the selected
- * services, with the shared length-capped helpers; the others are stored without validation, except a Telegram
- * username, which is stored only when valid because the database checks its format. isValidSignalUsername and
+ * services, with the shared length-capped helpers; the others keep what was typed, up to the same lengths, except a
+ * Telegram username, which is stored only when valid because the database checks its format. isValidSignalUsername and
  * isValidTelegramUsername normalize the raw input exactly as it is stored. The threshold is clamped to `range`
  * (Aave's unless the alert is Morpho's).
  */
@@ -77,7 +81,16 @@ export const parseConfigInput = (
   range?: ThresholdRange,
 ): { error: string } | { value: ConfigValues } => {
   const services = input.services ?? [];
-  if (!Array.isArray(services) || !services.every(isNotificationService)) return { error: SERVICES_ERROR };
+  if (
+    !Array.isArray(services) ||
+    !services.every(isNotificationService) ||
+    new Set(services).size !== services.length
+  ) {
+    return { error: SERVICES_ERROR };
+  }
+
+  const enabled = input.enabled ?? true;
+  if (typeof enabled !== "boolean") return { error: ENABLED_ERROR };
 
   const threshold = input.healthFactorThreshold ?? DEFAULT_HEALTH_FACTOR_THRESHOLD;
   if (typeof threshold !== "number" || !Number.isFinite(threshold)) return { error: THRESHOLD_ERROR };
@@ -105,11 +118,11 @@ export const parseConfigInput = (
 
   return {
     value: {
-      enabled: input.enabled ?? true,
+      enabled,
       services,
       healthFactorThreshold: clampThreshold(threshold, range),
-      email: optionalText(input.email, value => value.trim()),
-      signalRecipient: optionalText(input.signalRecipient, normalizeSignalUsername),
+      email: optionalText(input.email, value => value.trim(), MAX_EMAIL_LENGTH),
+      signalRecipient: optionalText(input.signalRecipient, normalizeSignalUsername, MAX_SIGNAL_RECIPIENT_LENGTH),
       telegramUsername,
       locale,
       channelLocales,

@@ -23,8 +23,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Pozicije na Morphu Blue i Midnight i upozorenja za health factor",
     intro: networks =>
       `Tvoje pozicije zaduženja na tržištima koja navodi aplikacija Morpho, na ovim mrežama: ${networks}. Zajmovi s promjenjivom kamatom (Morpho Blue) i zajmovi s fiksnom kamatom (Morpho Midnight). Health factor se čita s blockchaina.`,
-    checks: minutes =>
-      `Upozorenja se provjeravaju ${everyMinutes(minutes)}. Zajam s fiksnom kamatom dobiva i podsjetnik 7 dana i 1 dan prije dospijeća, a nakon dospijeća upozorenje pri svakoj provjeri dok god ostaje duga.`,
+    checks: (minutes, repeatMinutes) =>
+      `Upozorenja se provjeravaju ${everyMinutes(minutes)}. Zajam s fiksnom kamatom dobiva i podsjetnik 7 dana i 1 dan prije dospijeća, a nakon dospijeća upozorenje svakih ${repeatMinutes} minuta dok god ostaje duga.`,
     access: "Jedno plaćanje pristupa pokriva tvoja upozorenja na Aaveu i na Morphu.",
     notAffiliated: "Tokenping nije povezan s Morphom.",
     guideHealthFactor: "Kako radi health factor na Morphu",

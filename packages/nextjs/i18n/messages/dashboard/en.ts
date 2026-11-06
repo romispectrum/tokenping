@@ -13,8 +13,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "What alerts cost and how often we check",
     alertsCost: (channels, paymentChain) =>
       `To get a message on ${channels} when a market's health factor drops below a threshold you choose, unlock alerts with a USDC payment${paymentChain ? ` on ${paymentChain}` : ""}. The current price is shown before you pay.`,
-    checks: minutes =>
-      `Tokenping checks every ${minutes} minutes. While the health factor stays below your threshold, every check sends another message on each channel you chose.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tokenping checks every ${minutes} minutes. While the health factor stays below your threshold, you get a message every ${repeatMinutes} minutes on each channel you chose.`,
     guideThreshold: "How to choose a threshold",
     guideAlerts: "How alerts work",
     morphoDashboard: "Borrowing on Morpho? Open the Morpho dashboard",

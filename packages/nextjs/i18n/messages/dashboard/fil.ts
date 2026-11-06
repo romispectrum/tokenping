@@ -16,8 +16,8 @@ export const MESSAGES: DashboardMessages = {
     disclosureSummary: "Magkano ang mga alerto at gaano kadalas kami tumitingin",
     alertsCost: (channels, paymentChain) =>
       `Para makatanggap ng mensahe sa ${channels} kapag bumaba ang health factor ng isang market sa threshold na pipiliin mo, i-unlock ang mga alerto sa pamamagitan ng bayad na USDC${paymentChain ? ` sa ${paymentChain}` : ""}. Ipapakita ang kasalukuyang presyo bago ka magbayad.`,
-    checks: minutes =>
-      `Tumitingin ang Tokenping bawat ${minutes} minuto. Habang nananatiling mas mababa sa threshold mo ang health factor, magpapadala ang bawat pagtingin ng panibagong mensahe sa bawat channel na pinili mo.`,
+    checks: (minutes, repeatMinutes) =>
+      `Tumitingin ang Tokenping bawat ${minutes} minuto. Habang nananatiling mas mababa sa threshold mo ang health factor, makakatanggap ka ng mensahe bawat ${repeatMinutes} minuto sa bawat channel na pinili mo.`,
     guideThreshold: "Paano pumili ng threshold",
     guideAlerts: "Paano gumagana ang mga alerto",
     morphoDashboard: "Nagbo-borrow sa Morpho? Buksan ang Morpho dashboard",

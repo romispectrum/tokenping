@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { isTelegramConfigured, replyToTelegramChat, sendTelegramMessage } from "~~/services/telegram/sendTelegram";
+import {
+  chatHoldsUsername,
+  isTelegramConfigured,
+  readTelegramUsernames,
+  replyToTelegramChat,
+  sendTelegramMessage,
+} from "~~/services/telegram/sendTelegram";
 
 const TOKEN = "123456:ABC-secret";
 const fetchMock = vi.fn();
@@ -155,5 +161,44 @@ describe("replyToTelegramChat", () => {
   it("swallows failures", async () => {
     fetchMock.mockRejectedValue(new Error("offline"));
     await expect(replyToTelegramChat("42", "hi")).resolves.toBeUndefined();
+  });
+});
+
+describe("readTelegramUsernames", () => {
+  it("answers the chat's usernames, lowercased, its bought ones included", async () => {
+    fetchMock.mockResolvedValue(
+      telegramResponse(200, { ok: true, result: { username: "Alice", active_usernames: ["Alice", "bought_name"] } }),
+    );
+    expect(await readTelegramUsernames("555")).toEqual(["alice", "alice", "bought_name"]);
+    expect(fetchMock.mock.calls[0][0]).toBe(`https://api.telegram.org/bot${TOKEN}/getChat?chat_id=555`);
+  });
+
+  it("answers an empty list for a chat with no username left", async () => {
+    fetchMock.mockResolvedValue(telegramResponse(200, { ok: true, result: {} }));
+    expect(await readTelegramUsernames("555")).toEqual([]);
+  });
+
+  it("answers null when Telegram cannot say", async () => {
+    fetchMock.mockResolvedValueOnce(telegramResponse(400, { ok: false, description: "chat not found" }));
+    expect(await readTelegramUsernames("555")).toBe(null);
+    fetchMock.mockRejectedValueOnce(new Error("offline"));
+    expect(await readTelegramUsernames("555")).toBe(null);
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "");
+    expect(await readTelegramUsernames("555")).toBe(null);
+  });
+});
+
+describe("chatHoldsUsername", () => {
+  it("is false once the chat holds another username or none", async () => {
+    fetchMock.mockResolvedValue(telegramResponse(200, { ok: true, result: { username: "renamed" } }));
+    expect(await chatHoldsUsername("555", "alice")).toBe(false);
+    expect(await chatHoldsUsername("555", "renamed")).toBe(true);
+    fetchMock.mockResolvedValue(telegramResponse(200, { ok: true, result: {} }));
+    expect(await chatHoldsUsername("555", "alice")).toBe(false);
+  });
+
+  it("is true when Telegram cannot say, so a safety alert still goes out", async () => {
+    fetchMock.mockRejectedValue(new Error("offline"));
+    expect(await chatHoldsUsername("555", "alice")).toBe(true);
   });
 });

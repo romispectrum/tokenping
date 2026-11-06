@@ -7,7 +7,7 @@ export type MorphoMessages = {
     title: string;
     /** `networks` is the list of Morpho's networks, joined. */
     intro: (networks: string) => string;
-    checks: (minutes: number) => string;
+    checks: (minutes: number, repeatMinutes: number) => string;
     access: string;
     notAffiliated: string;
     guideHealthFactor: string;

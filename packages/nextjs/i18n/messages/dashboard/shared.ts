@@ -23,7 +23,7 @@ export type DashboardMessages = {
     disclosureSummary: string;
     /** `paymentChain` is the network alerts are paid on; undefined when no target network has a paywall. */
     alertsCost: (channels: string, paymentChain: string | undefined) => string;
-    checks: (minutes: number) => string;
+    checks: (minutes: number, repeatMinutes: number) => string;
     guideThreshold: string;
     guideAlerts: string;
     /** The link to the Morpho dashboard, for a borrower who is on the wrong page. */

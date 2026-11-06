@@ -9,8 +9,8 @@ export const MESSAGES: MorphoMessages = {
     title: "Morpho Blue en Midnight: posities en health factor-alerts",
     intro: networks =>
       `Je leenposities in de markten die de Morpho-app vermeldt, op ${networks}: leningen met variabele rente (Morpho Blue) en met vaste rente (Morpho Midnight). De health factor wordt van de chain gelezen.`,
-    checks: minutes =>
-      `Alerts worden ${plural("nl", minutes, { one: "elke minuut", other: `elke ${minutes} minuten` })} gecontroleerd. Een lening met vaste rente krijgt ook een herinnering 7 dagen en 1 dag vóór de vervaldatum, en na de vervaldatum een alert bij elke controle zolang er nog schuld is.`,
+    checks: (minutes, repeatMinutes) =>
+      `Alerts worden ${plural("nl", minutes, { one: "elke minuut", other: `elke ${minutes} minuten` })} gecontroleerd. Een lening met vaste rente krijgt ook een herinnering 7 dagen en 1 dag vóór de vervaldatum, en na de vervaldatum elke ${repeatMinutes} minuten een alert zolang er nog schuld is.`,
     access: "Eén betaling voor toegang dekt je alerts voor Aave en Morpho.",
     notAffiliated: "Tokenping is niet verbonden aan Morpho.",
     guideHealthFactor: "Zo werkt de health factor van Morpho",

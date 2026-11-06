@@ -32,7 +32,11 @@ const multicall3 = (client: MorphoClient) => client.chain.contracts?.multicall3?
 
 type BlueMarketState = readonly [bigint, bigint, bigint, bigint, bigint, bigint];
 
-/** Health of a Morpho Blue borrow position; null when a needed read fails. */
+/**
+ * Health of a Morpho Blue borrow position; null when a needed read fails. In two rounds, because anyone can create a
+ * pre-liquidation contract for a market, with any oracle: an oracle runs only once the borrower has authorised its
+ * contract, and in a multicall of its own, so a hostile one cannot fail the reads every alert on the market depends on.
+ */
 export const readBlueHealth = async (
   client: MorphoClient,
   chain: MorphoChain,
@@ -46,10 +50,12 @@ export const readBlueHealth = async (
     { address: chain.blue, abi: MORPHO_BLUE_ABI, functionName: "market", args: [marketId] },
     { address: params.oracle, abi: MORPHO_ORACLE_ABI, functionName: "price" },
     { address: multicall3(client), abi: MULTICALL3_BLOCK_ABI, functionName: "getCurrentBlockTimestamp" },
-    ...preLiquidations.flatMap(({ address, oracle }) => [
-      { address: chain.blue, abi: MORPHO_BLUE_ABI, functionName: "isAuthorized", args: [user, address] },
-      { address: oracle, abi: MORPHO_ORACLE_ABI, functionName: "price" },
-    ]),
+    ...preLiquidations.map(({ address }) => ({
+      address: chain.blue,
+      abi: MORPHO_BLUE_ABI,
+      functionName: "isAuthorized",
+      args: [user, address],
+    })),
   ];
   const results = (await client.multicall({ allowFailure: true, contracts })) as Result<unknown>[];
 
@@ -107,11 +113,21 @@ export const readBlueHealth = async (
   // A pre-liquidation the borrower authorised can start before the LLTV, priced by its own oracle: alert on the lower line.
   // Not knowing whether it is authorised, or its price when it is, gives no reading: the LLTV line alone could read safe
   // while the position is being pre-liquidated.
-  for (const [index, { preLltv }] of preLiquidations.entries()) {
-    const authorised = ok<boolean>(results[4 + index * 2]);
-    if (authorised === undefined) return null;
-    if (!authorised) continue;
-    const prePrice = ok<bigint>(results[5 + index * 2]);
+  const authorisations = preLiquidations.map((_, index) => ok<boolean>(results[4 + index]));
+  if (authorisations.includes(undefined)) return null;
+  const authorised = preLiquidations.filter((_, index) => authorisations[index]);
+  const prices = authorised.length
+    ? ((await client.multicall({
+        allowFailure: true,
+        contracts: authorised.map(({ oracle }) => ({
+          address: oracle,
+          abi: MORPHO_ORACLE_ABI,
+          functionName: "price",
+        })),
+      })) as Result<unknown>[])
+    : [];
+  for (const [index, { preLltv }] of authorised.entries()) {
+    const prePrice = ok<bigint>(prices[index]);
     if (prePrice === undefined) return null;
     const preHealthFactor = healthFactorWad(maxBorrowAt(collateral, prePrice, BigInt(preLltv)), borrowed);
     if (preHealthFactor < healthFactor) {

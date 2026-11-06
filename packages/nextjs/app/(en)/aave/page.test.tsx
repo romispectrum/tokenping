@@ -75,7 +75,7 @@ describe("Aave page shell", () => {
     );
     // States the repeat behaviour (product limit), and keeps the no-JS text above check_render.sh's 800-char floor.
     expect(html).toContain(
-      "Tokenping checks every 5 minutes. While the health factor stays below your threshold, every check sends another message on each channel you chose.",
+      "Tokenping checks every 5 minutes. While the health factor stays below your threshold, you get a message every 15 minutes on each channel you chose.",
     );
     expect(html).toContain('<div data-stub="aave-dashboard">');
     // Product UI is calm: none of the marketing effects, no gradient text, no pink in the shell.

@@ -45,6 +45,9 @@ export const THRESHOLD_SLIDER_STEP = 0.1;
 /** Must match the cron schedule in vercel.json. */
 export const NOTIFICATION_CHECK_INTERVAL_MINUTES = 5;
 
+/** While a position stays below its threshold, each channel gets another message this often. */
+export const ALERT_REPEAT_MINUTES = 15;
+
 /** One test message per wallet and channel this often; the database enforces it (claim_notification_test_send). */
 export const TEST_SEND_COOLDOWN_MINUTES = 15;
 
