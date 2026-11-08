@@ -12,10 +12,13 @@ import AaveV4VsV3 from "~~/content/blog/de/aave-v4-vs-v3-unterschiede.mdx";
 import AaveVsMorpho from "~~/content/blog/de/aave-vs-morpho-vergleich.mdx";
 import AaveInterestRates from "~~/content/blog/de/aave-zinssaetze.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/de/auf-aave-oder-morpho-liquidiert-was-jetzt.mdx";
+import DefiSaverAlternatives from "~~/content/blog/de/defi-saver-alternativen.mdx";
 import ShortFiatWithAave from "~~/content/blog/de/fiat-short-mit-aave-kredit.mdx";
 import IsDefiLendingSafe from "~~/content/blog/de/ist-defi-lending-sicher.mdx";
 import CryptoBackedLoans from "~~/content/blog/de/krypto-besicherte-kredite.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/de/liquidationswarnung-telegram.mdx";
 import MorphoHealthFactor from "~~/content/blog/de/morpho-health-factor-erklaert.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/de/morpho-liquidationswarnungen.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/de/morpho-midnight-festzinskredite.mdx";
 import MorphoPreLiquidation from "~~/content/blog/de/morpho-vorliquidation.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/de/sicherer-health-factor-aave.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-vergleich": AaveVsMorpho,
   "aave-v4-vs-v3-unterschiede": AaveV4VsV3,
   "ist-defi-lending-sicher": IsDefiLendingSafe,
+  "defi-saver-alternativen": DefiSaverAlternatives,
+  "liquidationswarnung-telegram": LiquidationAlertTelegram,
+  "morpho-liquidationswarnungen": MorphoLiquidationAlerts,
 };

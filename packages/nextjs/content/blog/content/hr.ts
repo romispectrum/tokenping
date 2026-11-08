@@ -7,6 +7,7 @@ import AaveAlertsDoNotDisturb from "~~/content/blog/hr/aave-upozorenja-u-nacinu-
 import AaveV4VsV3 from "~~/content/blog/hr/aave-v4-vs-v3-razlike.mdx";
 import AaveVsMorpho from "~~/content/blog/hr/aave-vs-morpho-usporedba.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/hr/alati-za-aave-upozorenja-o-likvidaciji.mdx";
+import DefiSaverAlternatives from "~~/content/blog/hr/alternative-za-defi-saver.mdx";
 import StablecoinDepegAave from "~~/content/blog/hr/depeg-stablecoina-na-aaveu.mdx";
 import AaveMarketWindDown from "~~/content/blog/hr/gasenje-aave-trzista.mdx";
 import IsDefiLendingSafe from "~~/content/blog/hr/je-li-defi-pozajmljivanje-sigurno.mdx";
@@ -18,11 +19,13 @@ import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/hr/likvidiran-na-aa
 import MorphoHealthFactor from "~~/content/blog/hr/morpho-health-factor-objasnjen.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/hr/morpho-midnight-zajmovi-s-fiksnom-kamatom.mdx";
 import MorphoPreLiquidation from "~~/content/blog/hr/morpho-predlikvidacija.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/hr/morpho-upozorenja-o-likvidaciji.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/hr/postavljanje-aave-health-factor-upozorenja.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/hr/privatna-aave-upozorenja-o-likvidaciji.mdx";
 import ShortFiatWithAave from "~~/content/blog/hr/shortanje-fiat-valute-s-aaveom.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/hr/siguran-aave-health-factor.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/hr/tokenizirane-dionice-kao-kolateral.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/hr/upozorenje-o-likvidaciji-telegram.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/hr/wrapped-bitcoin-kao-kolateral-na-aaveu.mdx";
 import CryptoBackedLoans from "~~/content/blog/hr/zajmovi-uz-kripto-kolateral.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/hr/zasto-je-pao-aave-health-factor.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-usporedba": AaveVsMorpho,
   "aave-v4-vs-v3-razlike": AaveV4VsV3,
   "je-li-defi-pozajmljivanje-sigurno": IsDefiLendingSafe,
+  "alternative-za-defi-saver": DefiSaverAlternatives,
+  "upozorenje-o-likvidaciji-telegram": LiquidationAlertTelegram,
+  "morpho-upozorenja-o-likvidaciji": MorphoLiquidationAlerts,
 };

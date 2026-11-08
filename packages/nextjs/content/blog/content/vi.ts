@@ -9,6 +9,8 @@ import AvoidAaveLiquidation from "~~/content/blog/vi/cach-tranh-bi-thanh-ly-tren
 import AaveHealthFactorAlertSetup from "~~/content/blog/vi/cai-dat-canh-bao-he-so-suc-khoe-aave.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/vi/canh-bao-aave-khi-bat-khong-lam-phien.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/vi/canh-bao-aave-va-quyen-rieng-tu.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/vi/canh-bao-thanh-ly-morpho.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/vi/canh-bao-thanh-ly-telegram.mdx";
 import IsDefiLendingSafe from "~~/content/blog/vi/cho-vay-defi-co-an-toan-khong.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/vi/co-che-thanh-ly-tren-aave.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/vi/co-che-thanh-ly-tren-morpho.mdx";
@@ -20,6 +22,7 @@ import MorphoHealthFactor from "~~/content/blog/vi/he-so-suc-khoe-morpho.mdx";
 import AaveMarketWindDown from "~~/content/blog/vi/khi-aave-dong-cua-thi-truong.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/vi/khoan-vay-lai-suat-co-dinh-morpho-midnight.mdx";
 import AaveInterestRates from "~~/content/blog/vi/lai-suat-aave.mdx";
+import DefiSaverAlternatives from "~~/content/blog/vi/lua-chon-thay-the-defi-saver.mdx";
 import ShortFiatWithAave from "~~/content/blog/vi/short-tien-phap-dinh-bang-khoan-vay-aave.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/vi/so-sanh-cong-cu-canh-bao-thanh-ly-aave.mdx";
 import StablecoinDepegAave from "~~/content/blog/vi/stablecoin-mat-neo-va-aave.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-so-sanh": AaveVsMorpho,
   "aave-v4-vs-v3-khac-biet": AaveV4VsV3,
   "cho-vay-defi-co-an-toan-khong": IsDefiLendingSafe,
+  "lua-chon-thay-the-defi-saver": DefiSaverAlternatives,
+  "canh-bao-thanh-ly-telegram": LiquidationAlertTelegram,
+  "canh-bao-thanh-ly-morpho": MorphoLiquidationAlerts,
 };

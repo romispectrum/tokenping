@@ -358,6 +358,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "defi-saver-alternatives",
+        title: "DeFi Saver alternatives: alerts and automation (2026)",
+        description:
+          "DeFi Saver alternatives for Aave and Morpho borrowers: tools that repay for you, tools that only alert you, what each needs and costs, and what shut down.",
+        h1: "DeFi Saver alternatives for Aave and Morpho borrowers",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "What are the alternatives to DeFi Saver for protecting an Aave or Morpho loan?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "liquidation-alert-telegram",
+        title: "Liquidation alert on Telegram for Aave and Morpho loans",
+        description:
+          "How to get a liquidation alert on Telegram for an Aave or Morpho loan: which bots do it, how linking works, what a bot sees, and when an alert can fail.",
+        h1: "How to get a liquidation alert on Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "How do I get a Telegram alert before my Aave or Morpho loan is liquidated?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-liquidation-alerts",
+        title: "Morpho liquidation alerts: tools to watch a Morpho loan",
+        description:
+          "The Morpho app sends no liquidation alerts. Which tools do, for Morpho Blue and Midnight loans, what protects a loan, and what a Morpho liquidation bot is.",
+        h1: "Morpho liquidation alerts: how to watch a Morpho loan",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "How do I get an alert before my Morpho loan is liquidated?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   cs: [
     {
@@ -711,6 +751,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Je DeFi lending bezpečný a co se může doopravdy pokazit?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "alternativy-defi-saver",
+        title: "Alternativy DeFi Saver: upozornění a automatizace (2026)",
+        description:
+          "Alternativy DeFi Saver pro dlužníky na Aave a Morpho: nástroje, které splácejí za vás, nástroje jen s upozorněním, jejich nároky a ceny a zrušené služby.",
+        h1: "Alternativy DeFi Saver pro dlužníky na Aave a Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Jaké jsou alternativy k DeFi Saver pro ochranu půjčky na Aave nebo Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "upozorneni-na-likvidaci-telegram",
+        title: "Upozornění na likvidaci na Telegramu pro Aave a Morpho",
+        description:
+          "Upozornění na likvidaci na Telegramu pro půjčku na Aave či Morpho: které boty to umějí, jak funguje propojení, co bot vidí a kdy upozornění selže.",
+        h1: "Jak dostat upozornění na likvidaci na Telegramu",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Jak dostanu upozornění na Telegramu dřív, než mi zlikvidují půjčku na Aave nebo Morpho?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "upozorneni-na-likvidaci-morpho",
+        title: "Upozornění na likvidaci na Morpho: nástroje pro sledování",
+        description:
+          "Aplikace Morpho neposílá upozornění na likvidaci. Které nástroje ano, pro půjčky na Blue a Midnight, co půjčku chrání a co je likvidační bot Morpho.",
+        h1: "Upozornění na likvidaci na Morpho: jak sledovat půjčku",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Jak dostanu upozornění, než mi zlikvidují půjčku na Morpho?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -1072,6 +1152,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "alternativas-a-defi-saver",
+        title: "Alternativas a DeFi Saver: alertas y automatización (2026)",
+        description:
+          "Alternativas a DeFi Saver para prestatarios de Aave y Morpho: herramientas que pagan por ti, las que solo avisan, sus requisitos y costos, y qué cerró.",
+        h1: "Alternativas a DeFi Saver para prestatarios de Aave y Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "¿Qué alternativas hay a DeFi Saver para proteger un préstamo de Aave o Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alerta-de-liquidacion-telegram",
+        title: "Alerta de liquidación en Telegram para Aave y Morpho",
+        description:
+          "Alerta de liquidación en Telegram para un préstamo de Aave o Morpho: qué bots la envían, cómo se vinculan, qué ve un bot y cuándo puede fallar.",
+        h1: "Cómo recibir una alerta de liquidación en Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "¿Cómo recibo una alerta en Telegram antes de que liquiden mi préstamo de Aave o Morpho?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alertas-de-liquidacion-morpho",
+        title: "Alertas de liquidación en Morpho: cómo vigilar tu préstamo",
+        description:
+          "La app de Morpho no envía alertas. Qué herramientas sí avisan en Morpho Blue y Midnight, qué protege un préstamo y qué es un bot de liquidación.",
+        h1: "Alertas de liquidación en Morpho: cómo vigilar un préstamo de Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "¿Cómo recibo una alerta antes de que liquiden mi préstamo de Morpho?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   hi: [
     {
@@ -1425,6 +1545,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "क्या DeFi लेंडिंग सुरक्षित है, और असल में क्या गलत हो सकता है?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "defi-saver-ke-vikalp",
+        title: "DeFi Saver के विकल्प: अलर्ट और ऑटोमेशन (2026)",
+        description:
+          "Aave और Morpho उधार लेने वालों के लिए DeFi Saver के विकल्प: कर्ज़ खुद चुकाने वाले टूल, सिर्फ़ अलर्ट देने वाले टूल, उनकी शर्तें, लागत और जो बंद हो गए।",
+        h1: "Aave और Morpho उधार लेने वालों के लिए DeFi Saver के विकल्प",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Aave या Morpho लोन की सुरक्षा के लिए DeFi Saver के विकल्प क्या हैं?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "telegram-par-liquidation-alert",
+        title: "Aave और Morpho लोन के लिए Telegram पर liquidation alert",
+        description:
+          "Aave या Morpho लोन के लिए Telegram पर liquidation alert कैसे पाएँ: कौन-से बॉट यह करते हैं, लिंक कैसे होता है, बॉट क्या देखता है और अलर्ट कब चूक सकता है।",
+        h1: "Telegram पर liquidation alert कैसे पाएँ",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "मेरा Aave या Morpho लोन लिक्विडेट होने से पहले Telegram पर अलर्ट कैसे पाऊँ?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-liquidation-alert",
+        title: "Morpho liquidation alert: Morpho लोन पर नज़र रखने के टूल",
+        description:
+          "Morpho ऐप कोई liquidation alert नहीं भेजता। Morpho Blue और Midnight लोन के लिए कौन-से टूल भेजते हैं, लोन की सुरक्षा क्या करता है, और bot क्या है।",
+        h1: "Morpho liquidation alert: Morpho लोन पर नज़र कैसे रखें",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "मेरा Morpho लोन लिक्विडेट होने से पहले अलर्ट कैसे पाऊँ?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -1785,6 +1945,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "defi-saver-alternativen",
+        title: "DeFi Saver Alternativen: Alerts und Automatisierung (2026)",
+        description:
+          "DeFi Saver Alternativen für Aave und Morpho: Tools, die für dich zurückzahlen, Tools, die nur warnen, ihre Kosten und was eingestellt wurde.",
+        h1: "DeFi Saver Alternativen für Kreditnehmer auf Aave und Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Welche Alternativen zu DeFi Saver schützen einen Kredit auf Aave oder Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "liquidationswarnung-telegram",
+        title: "Liquidationswarnung per Telegram für Aave und Morpho",
+        description:
+          "Liquidationswarnung per Telegram für einen Aave- oder Morpho-Kredit: welche Bots das tun, wie das Verknüpfen geht und wann eine Warnung ausfallen kann.",
+        h1: "So bekommst du eine Liquidationswarnung per Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Wie bekomme ich eine Telegram-Warnung, bevor mein Aave- oder Morpho-Kredit liquidiert wird?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-liquidationswarnungen",
+        title: "Morpho Liquidationswarnungen: Tools für einen Morpho-Kredit",
+        description:
+          "Die Morpho-App schickt keine Liquidationswarnungen. Welche Tools es für Blue und Midnight tun, was einen Kredit schützt und was ein Liquidationsbot ist.",
+        h1: "Morpho Liquidationswarnungen: So überwachst du einen Morpho-Kredit",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Wie bekomme ich eine Warnung, bevor mein Morpho-Kredit liquidiert wird?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   vi: [
     {
@@ -2139,6 +2339,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Cho vay DeFi có an toàn không, và điều gì thực sự có thể xảy ra?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "lua-chon-thay-the-defi-saver",
+        title: "Lựa chọn thay thế DeFi Saver: cảnh báo và tự động hóa (2026)",
+        description:
+          "Lựa chọn thay thế DeFi Saver cho người vay Aave và Morpho: công cụ trả nợ hộ, công cụ chỉ cảnh báo, chi phí, yêu cầu và công cụ đã đóng cửa.",
+        h1: "Lựa chọn thay thế DeFi Saver cho người vay trên Aave và Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Có những lựa chọn thay thế DeFi Saver nào để bảo vệ khoản vay trên Aave hoặc Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "canh-bao-thanh-ly-telegram",
+        title: "Cảnh báo thanh lý Telegram cho khoản vay Aave và Morpho",
+        description:
+          "Cách nhận cảnh báo thanh lý Telegram cho khoản vay Aave hoặc Morpho: bot nào làm được, cách liên kết, bot thấy gì và khi nào cảnh báo thất bại.",
+        h1: "Cách nhận cảnh báo thanh lý Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Làm sao để nhận cảnh báo Telegram trước khi khoản vay Aave hoặc Morpho của tôi bị thanh lý?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "canh-bao-thanh-ly-morpho",
+        title: "Cảnh báo thanh lý Morpho: công cụ theo dõi khoản vay Morpho",
+        description:
+          "Ứng dụng Morpho không gửi cảnh báo thanh lý. Công cụ nào có cho khoản vay Morpho Blue và Midnight, điều gì bảo vệ khoản vay, và bot thanh lý Morpho là gì.",
+        h1: "Cảnh báo thanh lý Morpho: cách theo dõi một khoản vay Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Làm sao để nhận cảnh báo trước khi khoản vay Morpho của tôi bị thanh lý?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -2501,6 +2741,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "alternatives-a-defi-saver",
+        title: "Alternatives à DeFi Saver : alertes et automatisation",
+        description:
+          "Alternatives à DeFi Saver pour emprunter sur Aave et Morpho : outils qui remboursent, outils qui alertent seulement, prérequis, coûts et services fermés.",
+        h1: "Quelles alternatives à DeFi Saver pour un emprunteur Aave ou Morpho ?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Quelles sont les alternatives à DeFi Saver pour protéger un prêt Aave ou Morpho ?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alerte-de-liquidation-telegram",
+        title: "Alerte de liquidation Telegram pour un prêt Aave ou Morpho",
+        description:
+          "Alerte de liquidation Telegram pour un prêt Aave ou Morpho : quels bots la proposent, comment les lier, ce qu'un bot voit, quand elle échoue.",
+        h1: "Comment recevoir une alerte de liquidation sur Telegram ?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Comment recevoir une alerte Telegram avant la liquidation de mon prêt Aave ou Morpho ?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alertes-de-liquidation-morpho",
+        title: "Alertes de liquidation Morpho : surveiller un prêt",
+        description:
+          "L'application Morpho n'envoie aucune alerte de liquidation. Quels outils le font pour Morpho Blue et Midnight, et ce qu'est un bot de liquidation.",
+        h1: "Alertes de liquidation Morpho : comment surveiller un prêt Morpho ?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Comment recevoir une alerte avant la liquidation de mon prêt Morpho ?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   pt: [
     {
@@ -2861,6 +3141,47 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "alternativas-ao-defi-saver",
+        title: "Alternativas ao DeFi Saver: alertas e automação (2026)",
+        description:
+          "Alternativas ao DeFi Saver para tomadores no Aave e Morpho: ferramentas que pagam por você, as que só avisam, o que cada uma exige e custa e o que fechou.",
+        h1: "Alternativas ao DeFi Saver para quem toma empréstimo no Aave e no Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Quais são as alternativas ao DeFi Saver para proteger um empréstimo no Aave ou no Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alerta-de-liquidacao-telegram",
+        title: "Alerta de liquidação no Telegram para Aave e Morpho",
+        description:
+          "Como receber um alerta de liquidação no Telegram para um empréstimo no Aave ou Morpho: quais bots fazem isso, a vinculação e quando um alerta falha.",
+        h1: "Como receber um alerta de liquidação no Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion:
+          "Como recebo um alerta no Telegram antes de o meu empréstimo no Aave ou no Morpho ser liquidado?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alertas-de-liquidacao-morpho",
+        title: "Alertas de liquidação do Morpho: ferramentas para vigiar",
+        description:
+          "O app do Morpho não envia alertas de liquidação. Veja quais ferramentas enviam, para Morpho Blue e Midnight, o que protege um empréstimo e o que é um bot.",
+        h1: "Alertas de liquidação do Morpho: como acompanhar um empréstimo no Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Como recebo um alerta antes de o meu empréstimo no Morpho ser liquidado?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   it: [
     {
@@ -3217,6 +3538,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Il prestito DeFi è sicuro, e cosa può andare davvero storto?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "alternative-a-defi-saver",
+        title: "Alternative a DeFi Saver: avvisi e automazione (2026)",
+        description:
+          "Alternative a DeFi Saver per chi prende in prestito su Aave e Morpho: strumenti che rimborsano per te o che avvisano soltanto, requisiti, costi e chiusure.",
+        h1: "Alternative a DeFi Saver per chi prende in prestito su Aave e Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Quali sono le alternative a DeFi Saver per proteggere un prestito su Aave o Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "avviso-di-liquidazione-telegram",
+        title: "Avviso di liquidazione su Telegram per Aave e Morpho",
+        description:
+          "Come ricevere un avviso di liquidazione su Telegram per un prestito Aave o Morpho: quali bot lo fanno, come si collegano, cosa vedono e quando falliscono.",
+        h1: "Come ricevere un avviso di liquidazione su Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Come ricevo un avviso su Telegram prima che il mio prestito Aave o Morpho venga liquidato?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "avvisi-di-liquidazione-morpho",
+        title: "Avvisi di liquidazione Morpho: come controllare il prestito",
+        description:
+          "L'app di Morpho non invia avvisi di liquidazione. Quali strumenti lo fanno per i prestiti Blue e Midnight, cosa li protegge e cos'è un bot di liquidazione.",
+        h1: "Avvisi di liquidazione Morpho: come controllare un prestito Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Come ricevo un avviso prima che il mio prestito Morpho venga liquidato?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -3576,6 +3937,47 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "alternatywy-dla-defi-saver",
+        title: "Alternatywy dla DeFi Saver: alerty i automatyzacja (2026)",
+        description:
+          "Alternatywy dla DeFi Saver dla pożyczkobiorców Aave i Morpho: narzędzia, które spłacają za ciebie, te, które tylko alarmują, ich koszty i zamknięte usługi.",
+        h1: "Alternatywy dla DeFi Saver dla pożyczkobiorców Aave i Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Jakie są alternatywy dla DeFi Saver, żeby zabezpieczyć pożyczkę na Aave lub Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alert-likwidacji-telegram",
+        title: "Alert likwidacji na Telegramie dla pożyczek Aave i Morpho",
+        description:
+          "Jak dostać alert likwidacji na Telegramie dla pożyczki Aave lub Morpho: które boty to robią, jak działa połączenie, co widzi bot i kiedy alert zawodzi.",
+        h1: "Jak dostać alert likwidacji na Telegramie",
+        publishedAt: "2026-11-08",
+        primaryQuestion:
+          "Jak dostać alert na Telegramie, zanim moja pożyczka na Aave lub Morpho zostanie zlikwidowana?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alerty-likwidacji-morpho",
+        title: "Alerty likwidacji Morpho: narzędzia do pilnowania pożyczki",
+        description:
+          "Aplikacja Morpho nie wysyła alertów likwidacji. Które narzędzia je wysyłają dla pożyczek Blue i Midnight, co chroni pożyczkę i czym jest bot likwidacyjny.",
+        h1: "Alerty likwidacji Morpho: jak pilnować pożyczki na Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Jak dostać alert, zanim moja pożyczka na Morpho zostanie zlikwidowana?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   tr: [
     {
@@ -3930,6 +4332,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "DeFi borç verme güvenli mi ve ters giden ne olabilir?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "defi-saver-alternatifleri",
+        title: "DeFi Saver alternatifleri: uyarı ve otomasyon (2026)",
+        description:
+          "Aave ve Morpho için DeFi Saver alternatifleri: sizin yerinize geri ödeyen araçlar, yalnızca uyaranlar, gereksinimleri, maliyetleri ve kapananlar.",
+        h1: "Aave ve Morpho'da borç alanlar için DeFi Saver alternatifleri",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Bir Aave veya Morpho kredisini korumak için DeFi Saver'a hangi alternatifler var?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "telegram-likidasyon-uyarisi",
+        title: "Aave ve Morpho kredileri için Telegram likidasyon uyarısı",
+        description:
+          "Aave veya Morpho kredisi için Telegram likidasyon uyarısı: hangi botlar yapar, bağlantı nasıl kurulur, bot ne görür ve uyarı ne zaman başarısız olur.",
+        h1: "Telegram'da likidasyon uyarısı nasıl alınır?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Aave veya Morpho kredim likide edilmeden önce nasıl Telegram uyarısı alırım?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-likidasyon-uyarilari",
+        title: "Morpho likidasyon uyarıları: Morpho kredisi izleme araçları",
+        description:
+          "Morpho uygulaması likidasyon uyarısı göndermez. Morpho Blue ve Midnight için hangi araçlar gönderir, krediyi ne korur ve Morpho likidasyon botu nedir.",
+        h1: "Morpho likidasyon uyarıları: bir Morpho kredisi nasıl izlenir?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Morpho kredim likide edilmeden önce nasıl uyarı alırım?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -4292,6 +4734,47 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "alternatif-defi-saver",
+        title: "Alternatif DeFi Saver: peringatan dan otomatisasi (2026)",
+        description:
+          "Alternatif DeFi Saver untuk peminjam Aave dan Morpho: alat yang melunasi untuk Anda, alat yang hanya memberi peringatan, biayanya, dan yang sudah tutup.",
+        h1: "Alternatif DeFi Saver untuk peminjam Aave dan Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Apa saja alternatif DeFi Saver untuk melindungi pinjaman Aave atau Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "peringatan-likuidasi-telegram",
+        title: "Peringatan likuidasi Telegram untuk pinjaman Aave dan Morpho",
+        description:
+          "Cara mendapat peringatan likuidasi Telegram untuk pinjaman Aave atau Morpho: bot yang bisa, cara menautkan, apa yang dilihat bot, dan kapan bisa gagal.",
+        h1: "Cara mendapat peringatan likuidasi di Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion:
+          "Bagaimana cara mendapat peringatan Telegram sebelum pinjaman Aave atau Morpho saya dilikuidasi?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "peringatan-likuidasi-morpho",
+        title: "Peringatan likuidasi Morpho: alat untuk memantau pinjaman",
+        description:
+          "Aplikasi Morpho tidak mengirim peringatan likuidasi. Alat mana yang mengirimnya untuk pinjaman Morpho Blue dan Midnight, dan apa itu bot likuidasi Morpho.",
+        h1: "Peringatan likuidasi Morpho: cara memantau pinjaman Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Bagaimana cara mendapat peringatan sebelum pinjaman Morpho saya dilikuidasi?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   nl: [
     {
@@ -4648,6 +5131,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "defi-saver-alternatieven",
+        title: "DeFi Saver-alternatieven: alerts en automatisering (2026)",
+        description:
+          "DeFi Saver-alternatieven voor leners op Aave en Morpho: tools die voor je aflossen, tools die alleen waarschuwen, wat ze kosten en wat is gestopt.",
+        h1: "DeFi Saver-alternatieven voor leners op Aave en Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Wat zijn de alternatieven voor DeFi Saver om een lening op Aave of Morpho te beschermen?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "liquidatie-alert-telegram",
+        title: "Liquidatie-alert op Telegram voor Aave- en Morpho-leningen",
+        description:
+          "Zo krijg je een liquidatie-alert op Telegram voor een Aave- of Morpho-lening: welke bots het doen, hoe koppelen werkt en wanneer een alert faalt.",
+        h1: "Zo krijg je een liquidatie-alert op Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hoe krijg ik een Telegram-alert voordat mijn Aave- of Morpho-lening wordt geliquideerd?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-liquidatie-alerts",
+        title: "Morpho liquidatie-alerts: tools voor je Morpho-lening",
+        description:
+          "De Morpho-app stuurt geen liquidatie-alerts. Welke tools wel, voor Morpho Blue- en Midnight-leningen, wat een lening beschermt en wat een liquidatiebot is.",
+        h1: "Morpho liquidatie-alerts: zo volg je een Morpho-lening",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hoe krijg ik een alert voordat mijn Morpho-lening wordt geliquideerd?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   ro: [
     {
@@ -5002,6 +5525,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Este sigură creditarea DeFi și ce poate merge de fapt prost?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "alternative-la-defi-saver",
+        title: "Alternative la DeFi Saver: alerte și automatizare (2026)",
+        description:
+          "Alternative la DeFi Saver pentru Aave și Morpho: instrumente care rambursează în locul tău sau doar alertează, ce cer, cât costă și ce s-a închis.",
+        h1: "Alternative la DeFi Saver pentru debitorii de pe Aave și Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Care sunt alternativele la DeFi Saver pentru protejarea unui împrumut pe Aave sau Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alerta-de-lichidare-telegram",
+        title: "Alertă de lichidare pe Telegram pentru Aave și Morpho",
+        description:
+          "Cum primești o alertă de lichidare pe Telegram pentru un împrumut Aave sau Morpho: ce boți o fac, cum legi contul și când o alertă poate eșua.",
+        h1: "Cum primești o alertă de lichidare pe Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Cum primesc o alertă pe Telegram înainte ca împrumutul meu Aave sau Morpho să fie lichidat?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "alerte-de-lichidare-morpho",
+        title: "Alerte de lichidare Morpho: instrumente pentru un împrumut",
+        description:
+          "Aplicația Morpho nu trimite alerte de lichidare. Ce instrumente o fac pentru împrumuturi Morpho Blue și Midnight și ce este un bot de lichidare.",
+        h1: "Alerte de lichidare Morpho: cum urmărești un împrumut Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Cum primesc o alertă înainte ca împrumutul meu Morpho să fie lichidat?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -5363,6 +5926,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "defi-saver-alternativak",
+        title: "DeFi Saver alternatívák: riasztás és automatizálás (2026)",
+        description:
+          "DeFi Saver alternatívák Aave- és Morpho-hitelfelvevőknek: mely eszközök fizetnek vissza helyetted, melyek csak riasztanak, mibe kerülnek, és mi szűnt meg.",
+        h1: "DeFi Saver alternatívák Aave- és Morpho-hitelfelvevőknek",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Melyek a DeFi Saver alternatívái egy Aave- vagy Morpho-hitel védelmére?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "likvidacios-riasztas-telegram",
+        title: "Likvidációs riasztás Telegramon Aave- és Morpho-hitelekhez",
+        description:
+          "Likvidációs riasztás Telegramon Aave- vagy Morpho-hitelre: mely botok csinálják, hogyan működik az összekötés, mit lát a bot, és mikor hibázhat.",
+        h1: "Hogyan kapj likvidációs riasztást Telegramon?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hogyan kapok Telegram-riasztást, mielőtt az Aave- vagy Morpho-hitelemet likvidálják?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-likvidacios-riasztasok",
+        title: "Morpho likvidációs riasztások: eszközök a hitelhez",
+        description:
+          "A Morpho alkalmazás nem riaszt. Mely eszközök igen a Morpho Blue és Midnight hitelekhez, mi védhet egy hitelt, és mi az a Morpho likvidációs bot.",
+        h1: "Morpho likvidációs riasztások: hogyan figyelj egy Morpho-hitelt?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hogyan kapok riasztást, mielőtt a Morpho-hitelemet likvidálják?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   hr: [
     {
@@ -5717,6 +6320,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Je li DeFi pozajmljivanje sigurno i što sve može poći po zlu?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "alternative-za-defi-saver",
+        title: "Alternative za DeFi Saver: upozorenja i automatizacija",
+        description:
+          "Alternative za DeFi Saver za dužnike na Aaveu i Morphu: alati koji otplaćuju umjesto tebe, alati koji samo upozoravaju, što traže i koliko koštaju.",
+        h1: "Alternative za DeFi Saver za dužnike na Aaveu i Morphu",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Koje su alternative za DeFi Saver za zaštitu zajma na Aaveu ili Morphu?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "upozorenje-o-likvidaciji-telegram",
+        title: "Upozorenje o likvidaciji na Telegramu za Aave i Morpho",
+        description:
+          "Kako dobiti upozorenje o likvidaciji na Telegramu za zajam na Aaveu ili Morphu: koji botovi to rade, što bot vidi i kada upozorenje zakaže.",
+        h1: "Kako dobiti upozorenje o likvidaciji na Telegramu",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Kako dobiti upozorenje na Telegramu prije likvidacije mog zajma na Aaveu ili Morphu?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-upozorenja-o-likvidaciji",
+        title: "Morpho upozorenja o likvidaciji: alati za praćenje zajma",
+        description:
+          "Aplikacija Morpho ne šalje upozorenja o likvidaciji. Koji alati šalju, što štiti zajam na Morpho Blue i Midnight i što je Morpho bot za likvidaciju.",
+        h1: "Morpho upozorenja o likvidaciji: kako pratiti zajam na Morphu",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Kako dobiti upozorenje prije likvidacije mog zajma na Morphu?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -6075,6 +6718,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "alternative-za-defi-saver",
+        title: "Alternative za DeFi Saver: opozorila, avtomatizacija (2026)",
+        description:
+          "Alternative za DeFi Saver za posojilojemalce na Aave in Morpho: orodja, ki odplačajo dolg, orodja, ki le opozorijo, njihova cena in kaj je ugasnilo.",
+        h1: "Alternative za DeFi Saver za posojilojemalce na Aave in Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Katere so alternative za DeFi Saver za zaščito posojila na Aave ali Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "opozorilo-o-likvidaciji-telegram",
+        title: "Opozorilo o likvidaciji na Telegramu za Aave in Morpho",
+        description:
+          "Opozorilo o likvidaciji na Telegramu za posojilo na Aave ali Morpho: kateri boti to znajo, kako deluje povezava, kaj bot vidi in kdaj opozorilo odpove.",
+        h1: "Kako dobiti opozorilo o likvidaciji na Telegramu?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Kako dobim opozorilo na Telegramu, preden je moje posojilo na Aave ali Morpho likvidirano?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-opozorila-o-likvidaciji",
+        title: "Morpho opozorila o likvidaciji: kako spremljati posojilo",
+        description:
+          "Aplikacija Morpho ne pošilja opozoril o likvidaciji. Katera orodja jih pošiljajo za posojila Morpho Blue in Midnight in kaj je bot za likvidacijo.",
+        h1: "Morpho opozorila o likvidaciji: kako spremljati posojilo na Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Kako dobim opozorilo, preden je moje posojilo na Morpho likvidirano?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   sr: [
     {
@@ -6431,6 +7114,47 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "alternative-za-defi-saver",
+        title: "Alternative za DeFi Saver: upozorenja i automatizacija",
+        description:
+          "Alternative za DeFi Saver za dužnike na Aaveu i Morphu: alati koji otplaćuju umesto tebe, alati koji samo upozoravaju, cene i šta je ugašeno.",
+        h1: "Alternative za DeFi Saver za dužnike na Aaveu i Morphu",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Koje su alternative za DeFi Saver za zaštitu zajma na Aaveu ili Morphu?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "upozorenje-o-likvidaciji-telegram",
+        title: "Upozorenje o likvidaciji na Telegramu za Aave i Morpho",
+        description:
+          "Upozorenje o likvidaciji na Telegramu za zajam na Aaveu ili Morphu: koji botovi to rade, kako ide povezivanje, šta bot vidi i kada može da zakaže.",
+        h1: "Kako da dobiješ upozorenje o likvidaciji na Telegramu?",
+        publishedAt: "2026-11-08",
+        primaryQuestion:
+          "Kako da dobijem upozorenje na Telegramu pre nego što mi se zajam na Aaveu ili Morphu likvidira?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-upozorenja-o-likvidaciji",
+        title: "Morpho upozorenja o likvidaciji: alati za praćenje zajma",
+        description:
+          "Aplikacija Morpho ne šalje upozorenja o likvidaciji. Koji alati šalju, za Morpho Blue i Midnight zajmove, šta štiti zajam i šta je bot za likvidaciju.",
+        h1: "Morpho upozorenja o likvidaciji: kako da pratiš zajam na Morphu",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Kako da dobijem upozorenje pre nego što mi se zajam na Morphu likvidira?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   sv: [
     {
@@ -6785,6 +7509,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Är DeFi-utlåning säker, och vad kan egentligen gå fel?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "alternativ-till-defi-saver",
+        title: "Alternativ till DeFi Saver: larm och automation (2026)",
+        description:
+          "Alternativ till DeFi Saver på Aave och Morpho: verktyg som betalar tillbaka åt dig, verktyg som bara larmar, vad de kostar och vad som lagts ned.",
+        h1: "Alternativ till DeFi Saver för låntagare på Aave och Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Vilka alternativ finns till DeFi Saver för att skydda ett lån på Aave eller Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "likvidationslarm-telegram",
+        title: "Likvidationslarm på Telegram för lån på Aave och Morpho",
+        description:
+          "Likvidationslarm på Telegram för ett lån på Aave eller Morpho: vilka bottar som gör det, hur kopplingen går till, vad en bot ser och när larmet uteblir.",
+        h1: "Så får du likvidationslarm på Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hur får jag ett Telegram-larm innan mitt lån på Aave eller Morpho likvideras?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-likvidationslarm",
+        title: "Morpho-likvidationslarm: verktyg som bevakar ett Morpho-lån",
+        description:
+          "Morpho-appen skickar inga likvidationslarm. Vilka verktyg gör det för Morpho Blue och Midnight, vad som skyddar lånet och vad en likvidationsbot är.",
+        h1: "Morpho-likvidationslarm: så bevakar du ett Morpho-lån",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hur får jag ett larm innan mitt Morpho-lån likvideras?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -7144,6 +7908,47 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "alternativer-til-defi-saver",
+        title: "Alternativer til DeFi Saver: alarmer og automatisering",
+        description:
+          "Alternativer til DeFi Saver for Aave- og Morpho-låntagere: værktøjer, der tilbagebetaler, værktøjer, der alarmerer, pris, krav og hvad der er lukket.",
+        h1: "Alternativer til DeFi Saver for Aave- og Morpho-låntagere",
+        publishedAt: "2026-11-08",
+        primaryQuestion:
+          "Hvilke alternativer findes der til DeFi Saver, når jeg vil beskytte et Aave- eller Morpho-lån?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "likvidationsalarm-telegram",
+        title: "Likvidationsalarm på Telegram til Aave- og Morpho-lån",
+        description:
+          "Få en likvidationsalarm på Telegram til et Aave- eller Morpho-lån: hvilke bots der findes, hvordan kobling virker, hvad en bot ser, og om den kan svigte.",
+        h1: "Sådan får du en likvidationsalarm på Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hvordan får jeg en Telegram-alarm, før mit Aave- eller Morpho-lån bliver likvideret?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-likvidationsalarmer",
+        title: "Morpho-likvidationsalarmer: værktøjer til at overvåge et lån",
+        description:
+          "Morpho-appen sender ingen likvidationsalarmer. Hvilke værktøjer gør, for Blue- og Midnight-lån, hvad der kan beskytte et lån, og hvad en bot er.",
+        h1: "Morpho-likvidationsalarmer: sådan overvåger du et Morpho-lån",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hvordan får jeg en alarm, før mit Morpho-lån bliver likvideret?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   nb: [
     {
@@ -7498,6 +8303,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Er DeFi-utlån trygt, og hva kan egentlig gå galt?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "alternativer-til-defi-saver",
+        title: "Alternativer til DeFi Saver: varsler og automatisering",
+        description:
+          "Alternativer til DeFi Saver for Aave og Morpho: verktøy som betaler tilbake for deg, verktøy som bare varsler, kostnader og krav, og hva som er lagt ned.",
+        h1: "Alternativer til DeFi Saver for låntakere på Aave og Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hva er alternativene til DeFi Saver for å beskytte et lån på Aave eller Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "likvidasjonsvarsel-telegram",
+        title: "Likvidasjonsvarsel på Telegram for lån på Aave og Morpho",
+        description:
+          "Slik får du likvidasjonsvarsel på Telegram for et Aave- eller Morpho-lån: hvilke boter som finnes, hvordan du kobler dem, hva de ser og når det svikter.",
+        h1: "Hvordan får du likvidasjonsvarsel på Telegram?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hvordan får jeg et varsel på Telegram før lånet mitt på Aave eller Morpho blir likvidert?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-likvidasjonsvarsler",
+        title: "Morpho-likvidasjonsvarsler: verktøy for å følge lånet",
+        description:
+          "Morpho-appen sender ingen likvidasjonsvarsler. Hvilke verktøy gjør det for Blue og Midnight, hva som beskytter et lån og hva en likvidasjonsbot er.",
+        h1: "Morpho-likvidasjonsvarsler: slik følger du et Morpho-lån",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Hvordan får jeg et varsel før Morpho-lånet mitt blir likvidert?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -7859,6 +8704,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "mga-alternatibo-sa-defi-saver",
+        title: "Mga alternatibo sa DeFi Saver: alerto at automation (2026)",
+        description:
+          "Mga alternatibo sa DeFi Saver para sa borrower ng Aave at Morpho: mga tool na nagbabayad ng utang, mga nag-aalerto lang, ang singil nila at ang nagsara.",
+        h1: "Mga alternatibo sa DeFi Saver para sa mga borrower ng Aave at Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Ano ang mga alternatibo sa DeFi Saver para protektahan ang loan sa Aave o Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "liquidation-alert-sa-telegram",
+        title: "Liquidation alert sa Telegram para sa loan sa Aave at Morpho",
+        description:
+          "Paano kumuha ng liquidation alert sa Telegram para sa loan sa Aave o Morpho: aling mga bot ang gumagawa nito, paano ang pag-link, ano ang nakikita ng bot.",
+        h1: "Paano kumuha ng liquidation alert sa Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Paano ako makakakuha ng alerto sa Telegram bago ma-liquidate ang loan ko sa Aave o Morpho?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-liquidation-alert",
+        title: "Morpho liquidation alert: mga tool para sa Morpho loan",
+        description:
+          "Walang liquidation alert ang Morpho app. Aling tool ang mayroon para sa Morpho Blue at Midnight, ano ang nagpoprotekta sa loan, at ano ang liquidation bot.",
+        h1: "Morpho liquidation alert: paano bantayan ang isang Morpho loan",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Paano ako makakakuha ng alerto bago ma-liquidate ang Morpho loan ko?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   bg: [
     {
@@ -8213,6 +9098,47 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Безопасно ли е DeFi кредитирането и какво всъщност може да се обърка?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "alternativi-na-defi-saver",
+        title: "Алтернативи на DeFi Saver: известия и автоматизация (2026)",
+        description:
+          "Алтернативи на DeFi Saver за Aave и Morpho: инструменти, които погасяват вместо вас, такива, които само предупреждават, и кои са спрени.",
+        h1: "Алтернативи на DeFi Saver за заемополучатели в Aave и Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Какви са алтернативите на DeFi Saver за защита на заем в Aave или Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "preduprezhdenie-za-likvidatsiya-telegram",
+        title: "Предупреждение за ликвидация в Telegram: Aave и Morpho",
+        description:
+          "Предупреждение за ликвидация в Telegram за заем в Aave или Morpho: кои ботове го правят, как се свързват, какво виждат и кога могат да се провалят.",
+        h1: "Как да получите предупреждение за ликвидация в Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion:
+          "Как да получа предупреждение в Telegram, преди заемът ми в Aave или Morpho да бъде ликвидиран?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-preduprezhdeniya-za-likvidatsiya",
+        title: "Известия за ликвидация в Morpho: как да следите заем",
+        description:
+          "Morpho не изпраща известия за ликвидация. Кои инструменти го правят за заеми в Blue и Midnight, какво пази заема и какво е бот за ликвидации.",
+        h1: "Известия за ликвидация в Morpho: как да следите заем в Morpho?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Как да получа известие, преди заемът ми в Morpho да бъде ликвидиран?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -8571,6 +9497,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         figuresAsOf: "2026-11-06",
       },
     },
+    {
+      meta: {
+        slug: "alternativy-defi-saver",
+        title: "Альтернативы DeFi Saver: оповещения и автоматизация",
+        description:
+          "Альтернативы DeFi Saver для заёмщиков Aave и Morpho: кто погашает долг за вас, кто только оповещает, что нужно, сколько стоит и что закрылось.",
+        h1: "Альтернативы DeFi Saver для заёмщиков Aave и Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Какие есть альтернативы DeFi Saver, чтобы защитить заём на Aave или Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "uvedomleniya-o-likvidatsii-telegram",
+        title: "Уведомления о ликвидации в Telegram для Aave и Morpho",
+        description:
+          "Как получать уведомления о ликвидации в Telegram для займа на Aave или Morpho: какие боты есть, как подключить, что видит бот и когда оповещение не придёт.",
+        h1: "Как получать уведомления о ликвидации в Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Как получить оповещение в Telegram до ликвидации моего займа на Aave или Morpho?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-uvedomleniya-o-likvidatsii",
+        title: "Уведомления о ликвидации Morpho: как следить за займом",
+        description:
+          "Приложение Morpho не шлёт уведомлений о ликвидации. Какие инструменты шлют их для Morpho Blue и Midnight, что защищает заём и что за бот ликвидации Morpho.",
+        h1: "Уведомления о ликвидации Morpho: как следить за займом на Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Как получить оповещение до ликвидации моего займа на Morpho?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
+      },
+    },
   ],
   uk: [
     {
@@ -8925,6 +9891,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Чи безпечне DeFi-кредитування і що насправді може піти не так?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "alternatyvy-defi-saver",
+        title: "Альтернативи DeFi Saver: сповіщення й автоматизація (2026)",
+        description:
+          "Альтернативи DeFi Saver для позичальників Aave і Morpho: що погашає борг за вас, що лише сповіщає, їхні вимоги, ціни та закриті сервіси.",
+        h1: "Альтернативи DeFi Saver для позичальників Aave і Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Які є альтернативи DeFi Saver для захисту позики на Aave або Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "spovishchennia-pro-likvidatsiiu-telegram",
+        title: "Сповіщення про ліквідацію в Telegram для позик Aave і Morpho",
+        description:
+          "Як отримати сповіщення про ліквідацію в Telegram для позики на Aave чи Morpho: які боти це вміють, як підключити, що бачить бот і коли він підводить.",
+        h1: "Як отримати сповіщення про ліквідацію в Telegram?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Як отримати сповіщення в Telegram, поки мою позику на Aave чи Morpho не ліквідовано?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-spovishchennia-pro-likvidatsiiu",
+        title: "Сповіщення про ліквідацію на Morpho: як стежити за позикою",
+        description:
+          "Застосунок Morpho не надсилає сповіщень про ліквідацію. Які інструменти надсилають для позик Blue і Midnight, що захищає позику і що таке бот ліквідації.",
+        h1: "Сповіщення про ліквідацію на Morpho: як стежити за позикою на Morpho?",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Як отримати сповіщення, поки мою позику на Morpho не ліквідовано?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],
@@ -9287,6 +10293,46 @@ export const POSTS_BY_LOCALE: Localized<readonly Post[]> = {
         primaryQuestion: "Είναι ασφαλής ο δανεισμός DeFi και τι μπορεί πραγματικά να πάει στραβά?",
         readingMinutes: 10,
         figuresAsOf: "2026-11-06",
+      },
+    },
+    {
+      meta: {
+        slug: "enallaktikes-tou-defi-saver",
+        title: "Εναλλακτικές του DeFi Saver: ειδοποιήσεις και αυτοματισμός",
+        description:
+          "Εναλλακτικές του DeFi Saver για δανειολήπτες Aave και Morpho: εργαλεία που αποπληρώνουν ή ειδοποιούν, τι απαιτούν, τι κοστίζουν και ποια έκλεισαν.",
+        h1: "Εναλλακτικές του DeFi Saver για δανειολήπτες Aave και Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Ποιες είναι οι εναλλακτικές του DeFi Saver για την προστασία ενός δανείου Aave ή Morpho?",
+        readingMinutes: 8,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "eidopoiisi-reustopoiisis-telegram",
+        title: "Ειδοποίηση ρευστοποίησης στο Telegram για Aave και Morpho",
+        description:
+          "Πώς να λάβετε ειδοποίηση ρευστοποίησης στο Telegram για δάνειο Aave ή Morpho: ποια bots το κάνουν, πώς συνδέεται και πότε μπορεί να αποτύχει.",
+        h1: "Πώς να λάβετε ειδοποίηση ρευστοποίησης στο Telegram",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Πώς λαμβάνω ειδοποίηση στο Telegram πριν ρευστοποιηθεί το δάνειό μου στο Aave ή στο Morpho?",
+        readingMinutes: 6,
+        figuresAsOf: "2026-11-08",
+      },
+    },
+    {
+      meta: {
+        slug: "morpho-eidopoiiseis-reustopoiisis",
+        title: "Ειδοποιήσεις ρευστοποίησης Morpho: εργαλεία για ένα δάνειο",
+        description:
+          "Η εφαρμογή Morpho δεν στέλνει ειδοποιήσεις ρευστοποίησης. Ποια εργαλεία το κάνουν για δάνεια Blue και Midnight και τι προστατεύει ένα δάνειο.",
+        h1: "Ειδοποιήσεις ρευστοποίησης Morpho: πώς παρακολουθείτε ένα δάνειο Morpho",
+        publishedAt: "2026-11-08",
+        primaryQuestion: "Πώς λαμβάνω ειδοποίηση πριν ρευστοποιηθεί το δάνειό μου στο Morpho?",
+        readingMinutes: 6,
+        protocol: "morpho",
+        figuresAsOf: "2026-11-08",
       },
     },
   ],

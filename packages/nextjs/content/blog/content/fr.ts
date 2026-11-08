@@ -2,8 +2,11 @@
 import AaveV4VsV3 from "~~/content/blog/fr/aave-v4-vs-v3-differences.mdx";
 import AaveVsMorpho from "~~/content/blog/fr/aave-vs-morpho-comparatif.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/fr/actions-tokenisees-comme-collateral.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/fr/alerte-de-liquidation-telegram.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/fr/alertes-aave-ne-pas-deranger.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/fr/alertes-de-liquidation-morpho.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/fr/alertes-liquidation-aave-privees.mdx";
+import DefiSaverAlternatives from "~~/content/blog/fr/alternatives-a-defi-saver.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/fr/bitcoin-wrappe-collateral-aave.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/fr/configurer-alertes-facteur-de-sante-aave.mdx";
 import StablecoinDepegAave from "~~/content/blog/fr/depeg-stablecoin-aave.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-comparatif": AaveVsMorpho,
   "aave-v4-vs-v3-differences": AaveV4VsV3,
   "le-pret-defi-est-il-sur": IsDefiLendingSafe,
+  "alternatives-a-defi-saver": DefiSaverAlternatives,
+  "alerte-de-liquidation-telegram": LiquidationAlertTelegram,
+  "alertes-de-liquidation-morpho": MorphoLiquidationAlerts,
 };

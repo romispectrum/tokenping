@@ -4,6 +4,7 @@ import AaveEMode from "~~/content/blog/uk/aave-e-mode-poiasnennia.mdx";
 import AaveHealthFactor from "~~/content/blog/uk/aave-health-factor-poiasnennia.mdx";
 import AaveV4VsV3 from "~~/content/blog/uk/aave-v4-vs-v3-vidminnosti.mdx";
 import AaveVsMorpho from "~~/content/blog/uk/aave-vs-morpho-porivniannia.mdx";
+import DefiSaverAlternatives from "~~/content/blog/uk/alternatyvy-defi-saver.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/uk/bezpechnyi-health-factor-aave.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/uk/chomu-ne-vdaietsia-vyvesty-abo-pozychyty-na-aave.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/uk/chomu-vpav-health-factor-aave.mdx";
@@ -15,11 +16,13 @@ import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/uk/likviduvaly-na-a
 import MorphoHealthFactor from "~~/content/blog/uk/morpho-health-factor-poiasnennia.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/uk/morpho-midnight-pozyky-z-fiksovanoiu-stavkoiu.mdx";
 import MorphoPreLiquidation from "~~/content/blog/uk/morpho-peredlikvidatsiia.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/uk/morpho-spovishchennia-pro-likvidatsiiu.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/uk/nalashtuvannia-spovishchen-health-factor-aave.mdx";
 import CryptoBackedLoans from "~~/content/blog/uk/pozyky-pid-zastavu-kryptovaliuty.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/uk/pryvatni-spovishchennia-pro-likvidatsiiu-aave.mdx";
 import ShortFiatWithAave from "~~/content/blog/uk/short-fiatnoi-valiuty-cherez-aave.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/uk/spovishchennia-aave-v-rezhymi-ne-turbuvaty.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/uk/spovishchennia-pro-likvidatsiiu-telegram.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/uk/tokenizovani-aktsii-yak-zastava.mdx";
 import AaveLiquidationPrice from "~~/content/blog/uk/tsina-likvidatsii-aave.mdx";
 import AaveInterestRates from "~~/content/blog/uk/vidsotkovi-stavky-aave.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-porivniannia": AaveVsMorpho,
   "aave-v4-vs-v3-vidminnosti": AaveV4VsV3,
   "chy-bezpechne-defi-kredytuvannia": IsDefiLendingSafe,
+  "alternatyvy-defi-saver": DefiSaverAlternatives,
+  "spovishchennia-pro-likvidatsiiu-telegram": LiquidationAlertTelegram,
+  "morpho-spovishchennia-pro-likvidatsiiu": MorphoLiquidationAlerts,
 };

@@ -2,6 +2,7 @@
 import AaveV4VsV3 from "~~/content/blog/id/aave-v4-vs-v3-perbedaan.mdx";
 import AaveVsMorpho from "~~/content/blog/id/aave-vs-morpho-perbandingan.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/id/alat-peringatan-likuidasi-aave.mdx";
+import DefiSaverAlternatives from "~~/content/blog/id/alternatif-defi-saver.mdx";
 import IsDefiLendingSafe from "~~/content/blog/id/apakah-pinjaman-defi-aman.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/id/cara-kerja-likuidasi-aave.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/id/cara-kerja-likuidasi-morpho.mdx";
@@ -18,6 +19,8 @@ import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/id/mengapa-penarikan-a
 import AaveMarketWindDown from "~~/content/blog/id/penutupan-pasar-aave.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/id/peringatan-aave-saat-jangan-ganggu.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/id/peringatan-likuidasi-aave-yang-privat.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/id/peringatan-likuidasi-morpho.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/id/peringatan-likuidasi-telegram.mdx";
 import CryptoBackedLoans from "~~/content/blog/id/pinjaman-berjaminan-kripto.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/id/pinjaman-bunga-tetap-morpho-midnight.mdx";
 import MorphoPreLiquidation from "~~/content/blog/id/pra-likuidasi-morpho.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-perbandingan": AaveVsMorpho,
   "aave-v4-vs-v3-perbedaan": AaveV4VsV3,
   "apakah-pinjaman-defi-aman": IsDefiLendingSafe,
+  "alternatif-defi-saver": DefiSaverAlternatives,
+  "peringatan-likuidasi-telegram": LiquidationAlertTelegram,
+  "peringatan-likuidasi-morpho": MorphoLiquidationAlerts,
 };

@@ -3,6 +3,7 @@ import AaveEMode from "~~/content/blog/cs/aave-e-mode-vysvetleni.mdx";
 import AaveHealthFactor from "~~/content/blog/cs/aave-health-factor-vysvetleni.mdx";
 import AaveV4VsV3 from "~~/content/blog/cs/aave-v4-vs-v3-co-se-meni.mdx";
 import AaveVsMorpho from "~~/content/blog/cs/aave-vs-morpho-srovnani.mdx";
+import DefiSaverAlternatives from "~~/content/blog/cs/alternativy-defi-saver.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/cs/bezpecny-health-factor-aave.mdx";
 import StablecoinDepegAave from "~~/content/blog/cs/depeg-stablecoinu-a-aave.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/cs/jak-funguje-likvidace-aave.mdx";
@@ -25,6 +26,8 @@ import PrivateAaveLiquidationAlerts from "~~/content/blog/cs/soukroma-upozorneni
 import TokenizedStocksCollateral from "~~/content/blog/cs/tokenizovane-akcie-jako-kolateral.mdx";
 import AaveMarketWindDown from "~~/content/blog/cs/ukonceni-trhu-aave.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/cs/upozorneni-aave-rezim-nerusit.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/cs/upozorneni-na-likvidaci-morpho.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/cs/upozorneni-na-likvidaci-telegram.mdx";
 import AaveInterestRates from "~~/content/blog/cs/urokove-sazby-aave.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/cs/wrapped-bitcoin-jako-kolateral-na-aave.mdx";
 import type { PostContent } from "~~/content/blog/types";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-srovnani": AaveVsMorpho,
   "aave-v4-vs-v3-co-se-meni": AaveV4VsV3,
   "je-defi-lending-bezpecny": IsDefiLendingSafe,
+  "alternativy-defi-saver": DefiSaverAlternatives,
+  "upozorneni-na-likvidaci-telegram": LiquidationAlertTelegram,
+  "upozorneni-na-likvidaci-morpho": MorphoLiquidationAlerts,
 };

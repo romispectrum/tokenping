@@ -7,6 +7,7 @@ import AaveAlertsDoNotDisturb from "~~/content/blog/sr/aave-upozorenja-u-rezimu-
 import AaveV4VsV3 from "~~/content/blog/sr/aave-v4-vs-v3-razlike.mdx";
 import AaveVsMorpho from "~~/content/blog/sr/aave-vs-morpho-poredjenje.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/sr/alati-za-aave-upozorenja-o-likvidaciji.mdx";
+import DefiSaverAlternatives from "~~/content/blog/sr/alternative-za-defi-saver.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/sr/bezbedan-aave-health-factor.mdx";
 import IsDefiLendingSafe from "~~/content/blog/sr/da-li-je-defi-pozajmljivanje-bezbedno.mdx";
 import StablecoinDepegAave from "~~/content/blog/sr/depeg-stablecoina-na-aaveu.mdx";
@@ -19,10 +20,12 @@ import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/sr/likvidiran-na-aa
 import MorphoHealthFactor from "~~/content/blog/sr/morpho-health-factor-objasnjen.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/sr/morpho-midnight-zajmovi-s-fiksnom-kamatom.mdx";
 import MorphoPreLiquidation from "~~/content/blog/sr/morpho-predlikvidacija.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/sr/morpho-upozorenja-o-likvidaciji.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/sr/podesavanje-aave-health-factor-upozorenja.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/sr/privatna-aave-upozorenja-o-likvidaciji.mdx";
 import ShortFiatWithAave from "~~/content/blog/sr/sortovanje-fiat-valute-uz-aave.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/sr/tokenizovane-akcije-kao-kolateral.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/sr/upozorenje-o-likvidaciji-telegram.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/sr/wrapped-bitcoin-kao-kolateral-na-aaveu.mdx";
 import CryptoBackedLoans from "~~/content/blog/sr/zajmovi-uz-kripto-kolateral.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/sr/zasto-je-pao-aave-health-factor.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-poredjenje": AaveVsMorpho,
   "aave-v4-vs-v3-razlike": AaveV4VsV3,
   "da-li-je-defi-pozajmljivanje-bezbedno": IsDefiLendingSafe,
+  "alternative-za-defi-saver": DefiSaverAlternatives,
+  "upozorenje-o-likvidaciji-telegram": LiquidationAlertTelegram,
+  "morpho-upozorenja-o-likvidaciji": MorphoLiquidationAlerts,
 };

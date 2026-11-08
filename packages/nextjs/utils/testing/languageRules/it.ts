@@ -6,7 +6,11 @@ const DISCLAIMER =
 const MONTHS = "gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre";
 
 // "(consultato il 29 ottobre 2026)", the first of the month as "1º" or "1°"; the participle may agree ("consultati il").
-const FETCHED_DATE = new RegExp(String.raw`(?:^|[\s(])consultat[oaie] il \d{1,2}[º°]? (?:${MONTHS}) \d{4}(?!\d)`, "iu");
+// The article elides before 8 and 11: "consultato l'8 novembre 2026".
+const FETCHED_DATE = new RegExp(
+  String.raw`(?:^|[\s(])consultat[oaie] (?:il \d{1,2}[º°]?|l['’](?:8|11)) (?:${MONTHS}) \d{4}(?!\d)`,
+  "iu",
+);
 
 const FREE_WORDS = /\bgratis\b|gratuit/iu;
 

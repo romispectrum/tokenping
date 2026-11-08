@@ -3,6 +3,7 @@ import AaveEMode from "~~/content/blog/ru/aave-e-mode-obyasnenie.mdx";
 import AaveHealthFactor from "~~/content/blog/ru/aave-health-factor-obyasnenie.mdx";
 import AaveV4VsV3 from "~~/content/blog/ru/aave-v4-vs-v3-razlichiya.mdx";
 import AaveVsMorpho from "~~/content/blog/ru/aave-vs-morpho-sravnenie.mdx";
+import DefiSaverAlternatives from "~~/content/blog/ru/alternativy-defi-saver.mdx";
 import IsDefiLendingSafe from "~~/content/blog/ru/bezopasno-li-defi-kreditovanie.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/ru/bezopasnyy-health-factor-aave.mdx";
 import StablecoinDepegAave from "~~/content/blog/ru/depeg-steyblkoina-na-aave.mdx";
@@ -15,6 +16,7 @@ import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/ru/likvidirovali-na
 import MorphoHealthFactor from "~~/content/blog/ru/morpho-health-factor-obyasnenie.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/ru/morpho-midnight-zaymy-s-fiksirovannoy-stavkoy.mdx";
 import MorphoPreLiquidation from "~~/content/blog/ru/morpho-predlikvidatsiya.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/ru/morpho-uvedomleniya-o-likvidatsii.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/ru/nastroyka-opoveshcheniy-health-factor-aave.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/ru/opoveshcheniya-aave-v-rezhime-ne-bespokoit.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/ru/pochemu-ne-udaetsya-vyvesti-ili-zanyat-na-aave.mdx";
@@ -24,6 +26,7 @@ import AaveInterestRates from "~~/content/blog/ru/protsentnye-stavki-aave.mdx";
 import ShortFiatWithAave from "~~/content/blog/ru/short-fiatnoy-valyuty-cherez-aave.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/ru/tokenizirovannye-aktsii-kak-zalog.mdx";
 import AaveLiquidationPrice from "~~/content/blog/ru/tsena-likvidatsii-aave.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/ru/uvedomleniya-o-likvidatsii-telegram.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/ru/wrapped-bitcoin-kak-zalog-na-aave.mdx";
 import AaveMarketWindDown from "~~/content/blog/ru/zakrytie-rynka-aave.mdx";
 import CryptoBackedLoans from "~~/content/blog/ru/zaymy-pod-zalog-kriptovalyuty.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-sravnenie": AaveVsMorpho,
   "aave-v4-vs-v3-razlichiya": AaveV4VsV3,
   "bezopasno-li-defi-kreditovanie": IsDefiLendingSafe,
+  "alternativy-defi-saver": DefiSaverAlternatives,
+  "uvedomleniya-o-likvidatsii-telegram": LiquidationAlertTelegram,
+  "morpho-uvedomleniya-o-likvidatsii": MorphoLiquidationAlerts,
 };

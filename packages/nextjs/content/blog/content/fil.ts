@@ -9,11 +9,14 @@ import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/fil/bakit-pumapalya-an
 import AaveMarketWindDown from "~~/content/blog/fil/kapag-isinara-ng-aave-ang-isang-market.mdx";
 import IsDefiLendingSafe from "~~/content/blog/fil/ligtas-ba-ang-defi-lending.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/fil/ligtas-na-aave-health-factor.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/fil/liquidation-alert-sa-telegram.mdx";
+import DefiSaverAlternatives from "~~/content/blog/fil/mga-alternatibo-sa-defi-saver.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/fil/mga-fixed-rate-loan-sa-morpho-midnight.mdx";
 import AaveInterestRates from "~~/content/blog/fil/mga-interest-rate-sa-aave.mdx";
 import CryptoBackedLoans from "~~/content/blog/fil/mga-loan-na-may-crypto-collateral.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/fil/mga-tool-para-sa-aave-liquidation-alert.mdx";
 import MorphoHealthFactor from "~~/content/blog/fil/morpho-health-factor-ipinaliwanag.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/fil/morpho-liquidation-alert.mdx";
 import MorphoPreLiquidation from "~~/content/blog/fil/morpho-pre-liquidation-ipinaliwanag.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/fil/na-liquidate-sa-aave-o-morpho-ano-na.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/fil/paano-gumagana-ang-liquidation-sa-aave.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-paghahambing": AaveVsMorpho,
   "aave-v4-vs-v3-pagkakaiba": AaveV4VsV3,
   "ligtas-ba-ang-defi-lending": IsDefiLendingSafe,
+  "mga-alternatibo-sa-defi-saver": DefiSaverAlternatives,
+  "liquidation-alert-sa-telegram": LiquidationAlertTelegram,
+  "morpho-liquidation-alert": MorphoLiquidationAlerts,
 };

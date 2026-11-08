@@ -7,13 +7,16 @@ import SafeAaveHealthFactor from "~~/content/blog/el/asfalis-health-factor-aave.
 import CryptoBackedLoans from "~~/content/blog/el/daneia-me-exasfalisi-crypto.mdx";
 import StablecoinDepegAave from "~~/content/blog/el/depeg-stablecoin-sto-aave.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/el/eidopoiiseis-aave-se-mi-enochleite.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/el/eidopoiisi-reustopoiisis-telegram.mdx";
 import IsDefiLendingSafe from "~~/content/blog/el/einai-asfalis-o-defi-danismos.mdx";
+import DefiSaverAlternatives from "~~/content/blog/el/enallaktikes-tou-defi-saver.mdx";
 import AaveInterestRates from "~~/content/blog/el/epitokia-aave.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/el/ergaleia-eidopoiiseon-reustopoiisis-aave.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/el/giati-apotygchanei-i-analipsi-i-o-daneismos-sto-aave.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/el/giati-epese-to-health-factor-aave.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/el/idiotikes-eidopoiiseis-reustopoiisis-aave.mdx";
 import AaveMarketWindDown from "~~/content/blog/el/kleisimo-agoras-aave.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/el/morpho-eidopoiiseis-reustopoiisis.mdx";
 import MorphoHealthFactor from "~~/content/blog/el/morpho-health-factor-exigisi.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/el/morpho-midnight-daneia-stathero-epitokio.mdx";
 import MorphoPreLiquidation from "~~/content/blog/el/morpho-pro-reustopoiisi.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-sygkrisi": AaveVsMorpho,
   "aave-v4-vs-v3-diafores": AaveV4VsV3,
   "einai-asfalis-o-defi-danismos": IsDefiLendingSafe,
+  "enallaktikes-tou-defi-saver": DefiSaverAlternatives,
+  "eidopoiisi-reustopoiisis-telegram": LiquidationAlertTelegram,
+  "morpho-eidopoiiseis-reustopoiisis": MorphoLiquidationAlerts,
 };

@@ -9,6 +9,7 @@ import AaveInterestRates from "~~/content/blog/nl/aave-rente.mdx";
 import AaveV4VsV3 from "~~/content/blog/nl/aave-v4-vs-v3-verschillen.mdx";
 import AaveVsMorpho from "~~/content/blog/nl/aave-vs-morpho-vergelijking.mdx";
 import AaveMarketWindDown from "~~/content/blog/nl/afbouw-van-een-aave-markt.mdx";
+import DefiSaverAlternatives from "~~/content/blog/nl/defi-saver-alternatieven.mdx";
 import ShortFiatWithAave from "~~/content/blog/nl/fiat-shorten-met-aave.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/nl/geliquideerd-op-aave-of-morpho-wat-nu.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/nl/getokeniseerde-aandelen-als-onderpand.mdx";
@@ -16,7 +17,9 @@ import HowAaveLiquidationWorks from "~~/content/blog/nl/hoe-werkt-liquidatie-op-
 import HowMorphoLiquidationWorks from "~~/content/blog/nl/hoe-werkt-liquidatie-op-morpho.mdx";
 import IsDefiLendingSafe from "~~/content/blog/nl/is-defi-lending-veilig.mdx";
 import CryptoBackedLoans from "~~/content/blog/nl/leningen-met-crypto-als-onderpand.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/nl/liquidatie-alert-telegram.mdx";
 import MorphoHealthFactor from "~~/content/blog/nl/morpho-health-factor-uitgelegd.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/nl/morpho-liquidatie-alerts.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/nl/morpho-midnight-leningen-met-vaste-rente.mdx";
 import MorphoPreLiquidation from "~~/content/blog/nl/morpho-pre-liquidatie.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/nl/prive-aave-liquidatie-alerts.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-vergelijking": AaveVsMorpho,
   "aave-v4-vs-v3-verschillen": AaveV4VsV3,
   "is-defi-lending-veilig": IsDefiLendingSafe,
+  "defi-saver-alternatieven": DefiSaverAlternatives,
+  "liquidatie-alert-telegram": LiquidationAlertTelegram,
+  "morpho-liquidatie-alerts": MorphoLiquidationAlerts,
 };

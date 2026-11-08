@@ -11,11 +11,14 @@ import AaveV4VsV3 from "~~/content/blog/aave-v4-vs-v3.mdx";
 import AaveVsMorpho from "~~/content/blog/aave-vs-morpho.mdx";
 import AvoidAaveLiquidation from "~~/content/blog/avoid-aave-liquidation.mdx";
 import CryptoBackedLoans from "~~/content/blog/crypto-backed-loans.mdx";
+import DefiSaverAlternatives from "~~/content/blog/defi-saver-alternatives.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/how-aave-liquidation-works.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/how-morpho-liquidation-works.mdx";
 import IsDefiLendingSafe from "~~/content/blog/is-defi-lending-safe.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/liquidated-on-aave-or-morpho-what-now.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/liquidation-alert-telegram.mdx";
 import MorphoHealthFactor from "~~/content/blog/morpho-health-factor.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/morpho-liquidation-alerts.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/morpho-midnight-fixed-rate-loans.mdx";
 import MorphoPreLiquidation from "~~/content/blog/morpho-pre-liquidation.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/private-aave-liquidation-alerts.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho": AaveVsMorpho,
   "aave-v4-vs-v3": AaveV4VsV3,
   "is-defi-lending-safe": IsDefiLendingSafe,
+  "defi-saver-alternatives": DefiSaverAlternatives,
+  "liquidation-alert-telegram": LiquidationAlertTelegram,
+  "morpho-liquidation-alerts": MorphoLiquidationAlerts,
 };

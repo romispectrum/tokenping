@@ -3,8 +3,11 @@ import AaveEMode from "~~/content/blog/ro/aave-e-mode-explicat.mdx";
 import AaveV4VsV3 from "~~/content/blog/ro/aave-v4-vs-v3-diferente.mdx";
 import AaveVsMorpho from "~~/content/blog/ro/aave-vs-morpho-comparatie.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/ro/actiuni-tokenizate-ca-garantie.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/ro/alerta-de-lichidare-telegram.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/ro/alerte-aave-in-modul-nu-deranja.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/ro/alerte-de-lichidare-morpho.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/ro/alerte-private-de-lichidare-aave.mdx";
+import DefiSaverAlternatives from "~~/content/blog/ro/alternative-la-defi-saver.mdx";
 import WhoNeedsHealthFactorAlerts from "~~/content/blog/ro/cine-are-nevoie-de-alerte-health-factor.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/ro/configurare-alerta-health-factor-aave.mdx";
 import AvoidAaveLiquidation from "~~/content/blog/ro/cum-eviti-lichidarea-pe-aave.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-comparatie": AaveVsMorpho,
   "aave-v4-vs-v3-diferente": AaveV4VsV3,
   "este-creditarea-defi-sigura": IsDefiLendingSafe,
+  "alternative-la-defi-saver": DefiSaverAlternatives,
+  "alerta-de-lichidare-telegram": LiquidationAlertTelegram,
+  "alerte-de-lichidare-morpho": MorphoLiquidationAlerts,
 };

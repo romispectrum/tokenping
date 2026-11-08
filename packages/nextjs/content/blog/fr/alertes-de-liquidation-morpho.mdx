@@ -1,0 +1,110 @@
+export const meta = {
+  slug: "alertes-de-liquidation-morpho",
+  title: "Alertes de liquidation Morpho : surveiller un prêt",
+  description:
+    "L'application Morpho n'envoie aucune alerte de liquidation. Quels outils le font pour Morpho Blue et Midnight, et ce qu'est un bot de liquidation.",
+  h1: "Alertes de liquidation Morpho : comment surveiller un prêt Morpho ?",
+  publishedAt: "2026-11-08",
+  primaryQuestion: "Comment recevoir une alerte avant la liquidation de mon prêt Morpho ?",
+  readingMinutes: 6,
+  protocol: "morpho",
+  figuresAsOf: "2026-11-08",
+};
+
+<ShortAnswer>
+  L'application Morpho affiche le facteur de santé et le prix de liquidation de votre prêt, mais n'envoie aucune alerte :
+  l'avertissement doit venir d'un autre outil. Pour les prêts Morpho Blue, Otomato, HF Guard, DeFi Monitor, DeFi Saver
+  Notify et Tokenping peuvent vous écrire avant la liquidation ; pour les prêts à taux fixe Morpho Midnight, Tokenping est
+  la seule alerte hébergée que nous ayons trouvée. La préliquidation et l'automatisation de DeFi Saver peuvent protéger
+  un prêt Blue sans vous. Un « bot de liquidation Morpho » désigne le plus souvent autre chose : un bot qui liquide les
+  prêts des autres.
+</ShortAnswer>
+
+<ScopeNote />
+
+**Dernière vérification : 8 novembre 2026.** Tokenping, qui publie ce guide, est un service d'alertes de facteur de santé
+pour Aave et Morpho qui vous écrit sur Signal, Telegram ou par e-mail. Les autres outils ci-dessous ont été vérifiés ce
+jour-là sur leurs propres sites.
+
+{/* Les sources et les faits derrière chaque ligne : content/blog/snapshots/morpho-liquidation-alerts.md */}
+
+## L'application Morpho vous prévient-elle avant la liquidation ?
+
+Non. L'application Morpho affiche le facteur de santé et le prix de liquidation de chaque position d'emprunt, et le centre d'aide de Morpho recommande aux emprunteurs de les surveiller, mais elle n'a aucune notification par e-mail, push ou chat. La documentation pour développeurs de Morpho laisse les alertes aux applications construites sur Morpho, et suggère d'avertir les utilisateurs quand le facteur de santé passe sous un niveau comme 1,1.
+
+Un prêt Morpho Blue peut être liquidé dès que son facteur de santé atteint 1,00, et le premier liquidateur peut rembourser toute la dette d'un coup, comme l'explique [le fonctionnement de la liquidation sur Morpho](/fr/blog/fonctionnement-liquidation-morpho). Un avertissement précoce est donc plus utile que sur les protocoles qui liquident par étapes.
+
+Méfiez-vous des bots qui se disent ceux de Morpho. Morpho indique ne gérer aucun bot Telegram.
+
+## Quels outils envoient des alertes de liquidation Morpho ?
+
+| Outil             | Morpho Blue | Morpho Midnight | Réseaux pour Morpho                          | Canaux                                 | Coût                       | Fréquence de vérification |
+| ----------------- | ----------- | --------------- | -------------------------------------------- | -------------------------------------- | -------------------------- | ------------------------- |
+| Tokenping         | Oui         | Oui             | 14 réseaux ; Midnight là où Morpho le liste  | Signal, Telegram, e-mail               | <AlertPrice />             | Toutes les 5 minutes      |
+| Otomato           | Oui         | Non mentionné   | Ethereum, Arbitrum, Base, HyperEVM, Monad    | Applications iOS et Android, Telegram  | Alertes de base sans frais | Non indiquée              |
+| HF Guard          | Oui         | Non mentionné   | Six réseaux, dont Arc                        | Telegram, web                          | Sans frais pendant la bêta | « Periodically »          |
+| DeFi Monitor      | Oui         | Non             | Ethereum, Arbitrum, Base                     | Telegram, Discord                      | À partir de 4,99 $ par mois | Continue, par événements |
+| DeFi Saver Notify | Oui         | Non indiqué     | Ethereum, Arbitrum, Base                     | Application, e-mail, Telegram          | Non indiqué                | Non indiquée              |
+
+Ce qui les distingue compte plus sur Morpho que sur Aave :
+
+- **Midnight.** Les prêts à taux fixe se terminent à une date d'échéance, et après elle le prêt peut être liquidé quel que soit son facteur de santé. Tokenping envoie un rappel pendant les 7 derniers jours et le dernier jour, puis une alerte toutes les 15 minutes après l'échéance tant qu'il reste de la dette. [Les prêts à taux fixe Morpho Midnight](/fr/blog/morpho-midnight-prets-taux-fixe) en expliquent les règles.
+- **Préliquidation.** Si vous avez autorisé un contrat de préliquidation, une partie de votre position peut être vendue avant le LLTV du marché. Tokenping mesure votre facteur de santé par rapport à cette ligne plus précoce ; DeFi Monitor avertit aussi de la préliquidation.
+- **Jusqu'où descendre le seuil d'alerte.** Les marchés à LLTV élevé tournent souvent à un facteur de santé de 1,02 à 1,08 : un outil qui n'autorise l'alerte qu'à 1,1 ou plus vous écrirait sans cesse. Le seuil Morpho de Tokenping descend jusqu'à 1,02.
+
+Pour les prêts Aave et la liste plus large d'outils, voyez [le comparatif des outils d'alerte de liquidation Aave](/fr/blog/outils-alertes-liquidation-aave).
+
+## Comment recevoir une alerte de liquidation Morpho avec Tokenping ?
+
+1. Ouvrez le [tableau de bord Morpho](/fr/morpho) et connectez le wallet avec lequel vous empruntez. Il liste vos positions d'emprunt dans les marchés que l'application Morpho liste, avec leurs facteurs de santé, et ne demande aucun paiement.
+2. Payez l'accès aux alertes en USDC sur Arbitrum One et connectez-vous en signant un message avec ce wallet. Une seule formule couvre Aave et Morpho.
+3. Sur la position, fixez un seuil entre 1,02 et 10 et choisissez Signal, Telegram ou l'e-mail, ou plusieurs.
+4. Appuyez sur **Envoyer un test** pour vérifier qu'un message arrive.
+
+Tokenping lit votre facteur de santé sur la chaîne avec le calcul propre à Morpho toutes les 5 minutes et, tant qu'il est sous votre seuil, vous écrit toutes les 15 minutes. Pour la configuration de Telegram en détail, voyez [comment recevoir une alerte de liquidation sur Telegram](/fr/blog/alerte-de-liquidation-telegram).
+
+## Quelque chose peut-il protéger un prêt Morpho automatiquement ?
+
+Quelques éléments peuvent agir sans vous, chacun avec des conditions.
+
+- **La préliquidation** permet à des liquidateurs de vendre une partie de votre position plus tôt et par étapes plus petites, contre une incitation, une fois que vous avez autorisé un contrat pour votre marché. N'importe qui peut créer un tel contrat, et il ne rembourse pas avec vos propres fonds. [La préliquidation Morpho expliquée](/fr/blog/preliquidation-morpho) décrit le compromis.
+- **DeFi Saver Automation** peut rembourser un prêt Morpho Blue avec son collatéral. Son Liquidation Protection se déclenche quand le Safety Ratio de DeFi Saver passe sous 127 %. Il demande un smart wallet DeFi Saver et au moins 30 000 $ de dette sur Ethereum ou 500 $ sur Base, prélève 0,05 % par action plus des frais de swap, et n'a pas d'automatisation pour Midnight.
+- **L'Auto-deleverage de Morpho** est en cours de retrait : depuis le 13 mai 2026, il n'accepte plus de nouvelles positions, et Morpho demande aux utilisateurs existants de le désactiver.
+
+[Les alternatives à DeFi Saver](/fr/blog/alternatives-a-defi-saver) comparent les outils d'automatisation selon les protocoles.
+
+## Qu'est-ce qu'un bot de liquidation Morpho ?
+
+En général un bot qui liquide des prêts, pas un qui protège le vôtre. Morpho ne liquide pas lui-même les positions : n'importe qui peut appeler la fonction de liquidation, et en pratique des bots automatisés le font pour un profit. Morpho publie ses propres bots de liquidation open source pour Morpho Blue et Morpho Midnight, et gère une Liquidation App qui liste les emprunteurs liquidables avec un profit estimé.
+
+Ce sont des outils pour liquidateurs. Si votre prêt y figure, il est déjà en danger ; c'est une alerte qui vous prévient avant.
+
+## Où voir les liquidations Morpho ?
+
+- **Le tableau de bord de données de Morpho** a une section Liquidations. Pour la semaine du 2 novembre 2026, il affichait 13 823 805 $ liquidés sur l'ensemble des chaînes et aucune créance irrécouvrable réalisée.
+- **Dune** héberge le tableau de bord « Morpho Liquidations » de Morpho, avec les liquidations et les créances irrécouvrables par marché.
+- **DefiLlama** a une page des liquidations de Morpho Blue, mais elle demande un abonnement.
+
+Une recherche « Morpho liquidation heatmap » trouve surtout des pages sur les liquidations de futures du token MORPHO sur des plateformes d'échange. Elles suivent les positions sur marge de traders sur le token MORPHO, pas des prêts Morpho.
+
+Pour calculer le prix auquel votre propre prêt est liquidé, l'application Morpho l'affiche pour chaque position, et [le guide du facteur de santé Morpho](/fr/blog/facteur-de-sante-morpho) donne la formule.
+
+## Sources
+
+- [Aide Morpho : liquidation](https://help.morpho.org/en/articles/12166252-liquidation) et [emprunter sur les marchés à taux variable](https://help.morpho.org/en/articles/12166187-borrow-product-variable-rate-markets-morpho-blue) (consulté le 8 novembre 2026)
+- [Documentation Morpho : écosystème d'applications](https://docs.morpho.org/get-started/resources/app-ecosystem/) : les applications de Morpho, les avertissements et la note sur les bots Telegram (consulté le 8 novembre 2026)
+- [Documentation Morpho : LTV et facteur de santé](https://docs.morpho.org/developers/borrow/concepts/ltv) et [liquidation](https://docs.morpho.org/developers/borrow/concepts/liquidation) (consulté le 8 novembre 2026)
+- [API Morpho](https://api.morpho.org/v0/midnight/markets?listed=true) : marchés Midnight listés (consulté le 8 novembre 2026)
+- [Aide Morpho : Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (consulté le 8 novembre 2026)
+- [Préliquidation Morpho](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (consulté le 8 novembre 2026)
+- [Documentation Morpho : bots et automatisations](https://docs.morpho.org/developers/ecosystem/bots-and-automations/) et [morpho-org/morpho-bots](https://github.com/morpho-org/morpho-bots) (consulté le 8 novembre 2026)
+- [Morpho Liquidation App](https://liquidation.morpho.org) et [tableau de bord de données de Morpho](https://data.morpho.org) (consulté le 8 novembre 2026)
+- [Dune : Morpho Liquidations](https://dune.com/morpho/morpho-liquidation) (consulté le 8 novembre 2026)
+- [DefiLlama : liquidations Morpho Blue](https://defillama.com/liquidations/morpho-blue) (consulté le 8 novembre 2026)
+- [CoinGlass : liquidations MORPHO](https://www.coinglass.com/liquidations/MORPHO) : liquidations de futures du token MORPHO (consulté le 8 novembre 2026)
+- [Otomato : Morpho](https://otomato.xyz/protocols/morpho) (consulté le 8 novembre 2026)
+- [HF Guard](https://hfguard.app) (consulté le 8 novembre 2026)
+- [DeFi Monitor](https://defi-monitor.com), ses [tarifs](https://defi-monitor.com/pricing) et son [changelog](https://defi-monitor.com/changelog) (consulté le 8 novembre 2026)
+- [Aide DeFi Saver : Notify](https://help.defisaver.com/features/notify), [lettre d'information de décembre 2025](https://blog.defisaver.com/defi-saver-newsletter-december-2025/), [Liquidation Protection](https://help.defisaver.com/automations/liquidation-protection) et [prérequis](https://help.defisaver.com/automations/requirements-for-using-automation) (consulté le 8 novembre 2026)
+
+_Contenu éducatif, pas un conseil financier. Les alertes réduisent le risque, elles n'empêchent pas la liquidation._

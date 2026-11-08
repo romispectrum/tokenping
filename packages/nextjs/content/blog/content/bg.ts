@@ -3,6 +3,7 @@ import AaveEMode from "~~/content/blog/bg/aave-e-mode-obyasnenie.mdx";
 import AaveHealthFactor from "~~/content/blog/bg/aave-health-factor-obyasnenie.mdx";
 import AaveV4VsV3 from "~~/content/blog/bg/aave-v4-vs-v3-razliki.mdx";
 import AaveVsMorpho from "~~/content/blog/bg/aave-vs-morpho-sravnenie.mdx";
+import DefiSaverAlternatives from "~~/content/blog/bg/alternativi-na-defi-saver.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/bg/bezopasen-health-factor-aave.mdx";
 import IsDefiLendingSafe from "~~/content/blog/bg/bezopasno-li-e-defi-kreditiraneto.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/bg/chastni-izvestiya-za-likvidatsiya-aave.mdx";
@@ -17,8 +18,10 @@ import AaveInterestRates from "~~/content/blog/bg/lihveni-protsenti-aave.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/bg/likvidiran-v-aave-ili-morpho-kakvo-sega.mdx";
 import MorphoHealthFactor from "~~/content/blog/bg/morpho-health-factor-obyasnenie.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/bg/morpho-midnight-zaemi-s-fiksirana-lihva.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/bg/morpho-preduprezhdeniya-za-likvidatsiya.mdx";
 import MorphoPreLiquidation from "~~/content/blog/bg/morpho-predvaritelna-likvidatsiya.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/bg/nastroyka-na-izvestiya-health-factor-aave.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/bg/preduprezhdenie-za-likvidatsiya-telegram.mdx";
 import ShortFiatWithAave from "~~/content/blog/bg/short-na-fiatna-valuta-s-aave.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/bg/tokenizirani-aktsii-kato-obezpechenie.mdx";
 import AaveLiquidationPrice from "~~/content/blog/bg/tsena-na-likvidatsiya-aave.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-sravnenie": AaveVsMorpho,
   "aave-v4-vs-v3-razliki": AaveV4VsV3,
   "bezopasno-li-e-defi-kreditiraneto": IsDefiLendingSafe,
+  "alternativi-na-defi-saver": DefiSaverAlternatives,
+  "preduprezhdenie-za-likvidatsiya-telegram": LiquidationAlertTelegram,
+  "morpho-preduprezhdeniya-za-likvidatsiya": MorphoLiquidationAlerts,
 };

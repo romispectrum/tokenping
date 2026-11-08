@@ -18,13 +18,16 @@ import AaveV4VsV3 from "~~/content/blog/hi/aave-v4-vs-v3-antar.mdx";
 import AaveVsMorpho from "~~/content/blog/hi/aave-vs-morpho-tulna.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/hi/aave-ya-morpho-par-liquidate-ho-gaye-ab-kya.mdx";
 import CryptoBackedLoans from "~~/content/blog/hi/crypto-backed-loan-kya-hai.mdx";
+import DefiSaverAlternatives from "~~/content/blog/hi/defi-saver-ke-vikalp.mdx";
 import WhoNeedsHealthFactorAlerts from "~~/content/blog/hi/health-factor-alert-kiske-liye-hai.mdx";
 import IsDefiLendingSafe from "~~/content/blog/hi/kya-defi-lending-surakshit-hai.mdx";
 import MorphoHealthFactor from "~~/content/blog/hi/morpho-health-factor-kya-hai.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/hi/morpho-liquidation-alert.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/hi/morpho-liquidation-kaise-hoti-hai.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/hi/morpho-midnight-fixed-rate-loan.mdx";
 import MorphoPreLiquidation from "~~/content/blog/hi/morpho-pre-liquidation-kya-hai.mdx";
 import StablecoinDepegAave from "~~/content/blog/hi/stablecoin-depeg-aur-aave.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/hi/telegram-par-liquidation-alert.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/hi/tokenized-stocks-ke-badle-loan.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/hi/wrapped-bitcoin-aave-collateral.mdx";
 import type { PostContent } from "~~/content/blog/types";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-tulna": AaveVsMorpho,
   "aave-v4-vs-v3-antar": AaveV4VsV3,
   "kya-defi-lending-surakshit-hai": IsDefiLendingSafe,
+  "defi-saver-ke-vikalp": DefiSaverAlternatives,
+  "telegram-par-liquidation-alert": LiquidationAlertTelegram,
+  "morpho-liquidation-alert": MorphoLiquidationAlerts,
 };

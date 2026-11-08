@@ -2,8 +2,11 @@
 import AaveV4VsV3 from "~~/content/blog/pt/aave-v4-vs-v3-diferencas.mdx";
 import AaveVsMorpho from "~~/content/blog/pt/aave-vs-morpho-comparacao.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/pt/acoes-tokenizadas-como-garantia.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/pt/alerta-de-liquidacao-telegram.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/pt/alertas-aave-nao-perturbe.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/pt/alertas-de-liquidacao-aave-privados.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/pt/alertas-de-liquidacao-morpho.mdx";
+import DefiSaverAlternatives from "~~/content/blog/pt/alternativas-ao-defi-saver.mdx";
 import WrappedBitcoinAaveCollateral from "~~/content/blog/pt/bitcoin-wrapped-como-garantia-aave.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/pt/como-funciona-a-liquidacao-no-aave.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/pt/como-funciona-a-liquidacao-no-morpho.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-comparacao": AaveVsMorpho,
   "aave-v4-vs-v3-diferencas": AaveV4VsV3,
   "emprestimo-defi-e-seguro": IsDefiLendingSafe,
+  "alternativas-ao-defi-saver": DefiSaverAlternatives,
+  "alerta-de-liquidacao-telegram": LiquidationAlertTelegram,
+  "alertas-de-liquidacao-morpho": MorphoLiquidationAlerts,
 };

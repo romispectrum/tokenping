@@ -224,6 +224,24 @@ export const RELATED_SLUGS: Record<string, readonly string[]> = {
     "how-aave-liquidation-works",
     "aave-v4-vs-v3",
   ],
+  "defi-saver-alternatives": [
+    "aave-health-factor",
+    "aave-liquidation-alert-tools",
+    "liquidation-alert-telegram",
+    "morpho-liquidation-alerts",
+  ],
+  "liquidation-alert-telegram": [
+    "aave-health-factor",
+    "aave-health-factor-alert-setup",
+    "defi-saver-alternatives",
+    "morpho-liquidation-alerts",
+  ],
+  "morpho-liquidation-alerts": [
+    "morpho-health-factor",
+    "how-morpho-liquidation-works",
+    "liquidation-alert-telegram",
+    "defi-saver-alternatives",
+  ],
   "is-defi-lending-safe": [
     "aave-health-factor",
     "aave-vs-morpho",

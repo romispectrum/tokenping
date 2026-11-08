@@ -16,9 +16,11 @@ import AaveV4VsV3 from "~~/content/blog/tr/aave-v4-vs-v3-farklar.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/tr/aave-veya-morphoda-likide-oldum-simdi-ne-olacak.mdx";
 import AaveVsMorpho from "~~/content/blog/tr/aave-vs-morpho-karsilastirma.mdx";
 import IsDefiLendingSafe from "~~/content/blog/tr/defi-borc-verme-guvenli-mi.mdx";
+import DefiSaverAlternatives from "~~/content/blog/tr/defi-saver-alternatifleri.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/tr/gizli-aave-likidasyon-uyarilari.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/tr/guvenli-aave-saglik-faktoru.mdx";
 import CryptoBackedLoans from "~~/content/blog/tr/kripto-teminatli-krediler.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/tr/morpho-likidasyon-uyarilari.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/tr/morpho-likidasyonu-nasil-isler.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/tr/morpho-midnight-sabit-faizli-krediler.mdx";
 import MorphoPreLiquidation from "~~/content/blog/tr/morpho-on-likidasyon.mdx";
@@ -26,6 +28,7 @@ import MorphoHealthFactor from "~~/content/blog/tr/morpho-saglik-faktoru.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/tr/rahatsiz-etmeyin-modunda-aave-uyarilari.mdx";
 import WhoNeedsHealthFactorAlerts from "~~/content/blog/tr/saglik-faktoru-uyarilari-kimin-icin.mdx";
 import StablecoinDepegAave from "~~/content/blog/tr/stablecoin-depeg-aave.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/tr/telegram-likidasyon-uyarisi.mdx";
 import TokenizedStocksCollateral from "~~/content/blog/tr/teminat-olarak-tokenize-hisseler.mdx";
 import type { PostContent } from "~~/content/blog/types";
 
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-karsilastirma": AaveVsMorpho,
   "aave-v4-vs-v3-farklar": AaveV4VsV3,
   "defi-borc-verme-guvenli-mi": IsDefiLendingSafe,
+  "defi-saver-alternatifleri": DefiSaverAlternatives,
+  "telegram-likidasyon-uyarisi": LiquidationAlertTelegram,
+  "morpho-likidasyon-uyarilari": MorphoLiquidationAlerts,
 };

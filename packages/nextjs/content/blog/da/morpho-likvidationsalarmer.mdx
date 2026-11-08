@@ -1,0 +1,109 @@
+export const meta = {
+  slug: "morpho-likvidationsalarmer",
+  title: "Morpho-likvidationsalarmer: værktøjer til at overvåge et lån",
+  description:
+    "Morpho-appen sender ingen likvidationsalarmer. Hvilke værktøjer gør, for Blue- og Midnight-lån, hvad der kan beskytte et lån, og hvad en bot er.",
+  h1: "Morpho-likvidationsalarmer: sådan overvåger du et Morpho-lån",
+  publishedAt: "2026-11-08",
+  primaryQuestion: "Hvordan får jeg en alarm, før mit Morpho-lån bliver likvideret?",
+  readingMinutes: 6,
+  protocol: "morpho",
+  figuresAsOf: "2026-11-08",
+};
+
+<ShortAnswer>
+  Morpho-appen viser dit låns health factor og likvidationspris, men sender ingen alarmer, så en advarsel må komme fra et
+  andet værktøj. Til Morpho Blue-lån kan Otomato, HF Guard, DeFi Monitor, DeFi Saver Notify og Tokenping skrive til dig
+  før likvidation; til Morpho Midnight-lån med fast rente er Tokenping den eneste hostede alarm, vi har fundet.
+  Forlikvidation og DeFi Savers automatisering kan beskytte et Blue-lån uden dig. En "Morpho-likvidationsbot" betyder
+  som regel noget andet: en bot, der likviderer andres lån.
+</ShortAnswer>
+
+<ScopeNote />
+
+**Senest tjekket: 8. november 2026.** Tokenping, som udgiver denne guide, er en health factor-alarmtjeneste til Aave og
+Morpho, der skriver til dig på Signal, Telegram eller e-mail. De øvrige værktøjer nedenfor blev tjekket mod deres egne
+websteder den dato.
+
+{/* Kilder og fakta bag hver række: content/blog/snapshots/morpho-liquidation-alerts.md */}
+
+## Advarer Morpho-appen dig før likvidation?
+
+Nej. Morpho-appen viser hver låneposition med health factor og likvidationspris, og Morphos hjælpecenter beder låntagere holde øje med dem, men der er ingen notifikationer på e-mail, push eller chat. Morphos udviklerdokumentation overlader alarmer til de apps, der er bygget på Morpho, og foreslår at advare brugere, når health factor falder under et niveau som 1,1.
+
+Et Morpho Blue-lån kan likvideres, så snart dets health factor når 1,00, og den første likvidator kan tilbagebetale hele gælden på én gang, som [sådan fungerer likvidation på Morpho](/da/blog/saadan-fungerer-likvidation-paa-morpho) forklarer. Det gør en tidlig advarsel mere nyttig end på protokoller, der likviderer i trin.
+
+Vær forsigtig med bots, der påstår at være Morphos. Morpho oplyser, at det ikke driver nogen Telegram-bot.
+
+## Hvilke værktøjer sender Morpho-likvidationsalarmer?
+
+| Værktøj           | Morpho Blue | Morpho Midnight | Netværk for Morpho                               | Kanaler                        | Pris                       | Hvor ofte det tjekker    |
+| ----------------- | ----------- | --------------- | ------------------------------------------------ | ------------------------------ | -------------------------- | ------------------------ |
+| Tokenping         | Ja          | Ja              | 14 netværk; Midnight, hvor Morpho lister det     | Signal, Telegram, e-mail       | <AlertPrice />             | Hvert 5. minut           |
+| Otomato           | Ja          | Ikke nævnt      | Ethereum, Arbitrum, Base, HyperEVM, Monad        | iOS- og Android-apps, Telegram | Kernealarmer uden betaling | Ikke oplyst              |
+| HF Guard          | Ja          | Ikke nævnt      | Seks netværk, blandt andet Arc                   | Telegram, web                  | Ingen betaling i beta      | "Periodically"           |
+| DeFi Monitor      | Ja          | Nej             | Ethereum, Arbitrum, Base                         | Telegram, Discord              | Fra $4,99 om måneden       | Løbende, hændelsesstyret |
+| DeFi Saver Notify | Ja          | Ikke oplyst     | Ethereum, Arbitrum, Base                         | App, e-mail, Telegram          | Ikke oplyst                | Ikke oplyst              |
+
+Det, der adskiller dem, betyder mere på Morpho end på Aave:
+
+- **Midnight.** Lån med fast rente slutter på en forfaldsdato, og efter den kan lånet likvideres uanset sin health factor. Tokenping sender en påmindelse de sidste 7 dage og den sidste dag, derefter en alarm hvert 15. minut efter forfaldsdatoen, så længe der er gæld. [Morpho Midnight: lån med fast rente](/da/blog/morpho-midnight-laan-med-fast-rente) forklarer reglerne.
+- **Forlikvidation.** Har du godkendt en forlikvidationskontrakt, kan en del af din position blive solgt før markedets LLTV. Tokenping måler din health factor mod den tidligere grænse; DeFi Monitor advarer også om forlikvidation.
+- **Hvor lavt du kan sætte alarmen.** Markeder med høj LLTV kører ofte med en health factor på 1,02 til 1,08, så et værktøj, der kun lader dig alarmere ved 1,1 eller derover, ville skrive til dig hele tiden. Tokenpings Morpho-tærskel går ned til 1,02.
+
+For Aave-lån og den bredere liste over værktøjer, se [værktøjer til Aave-likvidationsalarmer sammenlignet](/da/blog/vaerktoejer-til-aave-likvidationsalarmer).
+
+## Hvordan får du en Morpho-likvidationsalarm med Tokenping?
+
+1. Åbn [Morpho-dashboardet](/da/morpho), og forbind den wallet, du låner med. Det lister dine lånepositioner i markeder, som Morpho-appen lister, med deres health factors, og kræver ingen betaling.
+2. Betal for adgang til alarmer i USDC på Arbitrum One, og log ind ved at signere en besked med den wallet. Én plan dækker Aave og Morpho.
+3. Sæt en tærskel mellem 1,02 og 10 på positionen, og vælg Signal, Telegram eller e-mail, eller flere.
+4. Tryk på **Send test** for at tjekke, at en besked kommer frem.
+
+Tokenping læser din health factor fra kæden med Morphos egen matematik hvert 5. minut og skriver til dig hvert 15. minut, så længe den er under din tærskel. Om Telegram-opsætning i detaljer, se [sådan får du en likvidationsalarm på Telegram](/da/blog/likvidationsalarm-telegram).
+
+## Kan noget beskytte et Morpho-lån automatisk?
+
+Nogle få ting kan handle uden dig, hver med betingelser.
+
+- **Forlikvidation** lader likvidatorer sælge en del af din position tidligere og i mindre trin, mod et incitament, når du har godkendt en kontrakt for dit marked. Hvem som helst kan oprette sådan en kontrakt, og den tilbagebetaler ikke med dine egne midler. [Morpho-forlikvidation forklaret](/da/blog/morpho-forlikvidation) gennemgår afvejningen.
+- **DeFi Saver Automation** kan tilbagebetale et Morpho Blue-lån fra dets sikkerhed. Dens Liquidation Protection udløses, når DeFi Savers Safety Ratio falder under 127 %. Den kræver en DeFi Saver-smart wallet og mindst $30.000 i gæld på Ethereum eller $500 på Base, tager 0,05 % pr. handling plus swapgebyrer og har ingen automatisering til Midnight.
+- **Morphos Auto-deleverage** er ved at blive udfaset: siden 13. maj 2026 tager den ingen nye positioner, og Morpho beder eksisterende brugere slå den fra.
+
+[Alternativer til DeFi Saver](/da/blog/alternativer-til-defi-saver) sammenligner automatiseringsværktøjerne på tværs af protokoller.
+
+## Hvad er en Morpho-likvidationsbot?
+
+Som regel en bot, der likviderer lån, ikke en, der beskytter dit. Morpho likviderer ikke selv positioner: hvem som helst kan kalde likvidationsfunktionen, og i praksis gør automatiske bots det for at tjene penge. Morpho udgiver sine egne open source-likvidationsbots til Morpho Blue og Morpho Midnight og driver en Liquidation App, der lister låntagere, der kan likvideres, med en estimeret fortjeneste.
+
+Det er værktøjer til likvidatorer. Hvis dit lån står i et af dem, er det allerede i fare; en alarm er det, der fortæller dig det før.
+
+## Hvor kan du se Morpho-likvidationer?
+
+- **Morphos datadashboard** har en sektion om likvidationer. For ugen med 2. november 2026 viste det $13.823.805 likvideret på tværs af kæder og ingen realiseret dårlig gæld.
+- **Dune** hoster Morphos eget dashboard "Morpho Liquidations" med likvidationer og dårlig gæld pr. marked.
+- **DefiLlama** har en side om Morpho Blue-likvidationer, men den kræver et abonnement.
+
+En søgning på "Morpho liquidation heatmap" finder mest sider om likvidationer af futures på MORPHO-tokenet på børser. De følger traderes marginpositioner på MORPHO-tokenet, ikke Morpho-lån.
+
+For at finde den pris, hvor dit eget lån likvideres, viser Morpho-appen den for hver position, og [guiden til Morphos health factor](/da/blog/morpho-health-factor-forklaret) viser formlen.
+
+## Kilder
+
+- [Morpho-hjælp: likvidation](https://help.morpho.org/en/articles/12166252-liquidation) og [lån på markeder med variabel rente](https://help.morpho.org/en/articles/12166187-borrow-product-variable-rate-markets-morpho-blue) (hentet 8. november 2026)
+- [Morpho-dokumentation: appøkosystemet](https://docs.morpho.org/get-started/resources/app-ecosystem/): Morphos apps, advarsler og noten om Telegram-bots (hentet 8. november 2026)
+- [Morpho-dokumentation: LTV og health factor](https://docs.morpho.org/developers/borrow/concepts/ltv) og [likvidation](https://docs.morpho.org/developers/borrow/concepts/liquidation) (hentet 8. november 2026)
+- [Morpho API](https://api.morpho.org/v0/midnight/markets?listed=true): listede Midnight-markeder (hentet 8. november 2026)
+- [Morpho-hjælp: Sunsetting Auto-deleverage](https://help.morpho.org/en/articles/12048871-sunsetting-auto-deleverage) (hentet 8. november 2026)
+- [Morpho pre-liquidation](https://github.com/morpho-org/pre-liquidation), morpho-org/pre-liquidation (hentet 8. november 2026)
+- [Morpho-dokumentation: bots og automatiseringer](https://docs.morpho.org/developers/ecosystem/bots-and-automations/) og [morpho-org/morpho-bots](https://github.com/morpho-org/morpho-bots) (hentet 8. november 2026)
+- [Morpho Liquidation App](https://liquidation.morpho.org) og [Morphos datadashboard](https://data.morpho.org) (hentet 8. november 2026)
+- [Dune: Morpho Liquidations](https://dune.com/morpho/morpho-liquidation) (hentet 8. november 2026)
+- [DefiLlama: Morpho Blue-likvidationer](https://defillama.com/liquidations/morpho-blue) (hentet 8. november 2026)
+- [CoinGlass: MORPHO-likvidationer](https://www.coinglass.com/liquidations/MORPHO): futures-likvidationer af MORPHO-tokenet (hentet 8. november 2026)
+- [Otomato: Morpho](https://otomato.xyz/protocols/morpho) (hentet 8. november 2026)
+- [HF Guard](https://hfguard.app) (hentet 8. november 2026)
+- [DeFi Monitor](https://defi-monitor.com), dets [priser](https://defi-monitor.com/pricing) og [changelog](https://defi-monitor.com/changelog) (hentet 8. november 2026)
+- [DeFi Saver-hjælp: Notify](https://help.defisaver.com/features/notify), [nyhedsbrev for december 2025](https://blog.defisaver.com/defi-saver-newsletter-december-2025/), [Liquidation Protection](https://help.defisaver.com/automations/liquidation-protection) og [krav](https://help.defisaver.com/automations/requirements-for-using-automation) (hentet 8. november 2026)
+
+_Undervisningsindhold, ikke økonomisk rådgivning. Alarmer mindsker risikoen, men forhindrer ikke likvidation._

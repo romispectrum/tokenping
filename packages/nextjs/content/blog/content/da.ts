@@ -6,14 +6,17 @@ import AaveLiquidationPrice from "~~/content/blog/da/aave-likvidationspris.mdx";
 import AaveInterestRates from "~~/content/blog/da/aave-renter.mdx";
 import AaveV4VsV3 from "~~/content/blog/da/aave-v4-vs-v3-forskelle.mdx";
 import AaveVsMorpho from "~~/content/blog/da/aave-vs-morpho-sammenligning.mdx";
+import DefiSaverAlternatives from "~~/content/blog/da/alternativer-til-defi-saver.mdx";
 import IsDefiLendingSafe from "~~/content/blog/da/er-defi-udlaan-sikkert.mdx";
 import WhoNeedsHealthFactorAlerts from "~~/content/blog/da/hvem-har-brug-for-health-factor-alarmer.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/da/hvorfor-faldt-din-aave-health-factor.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/da/hvorfor-haevning-eller-laan-paa-aave-fejler.mdx";
 import CryptoBackedLoans from "~~/content/blog/da/laan-med-krypto-som-sikkerhed.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/da/likvidationsalarm-telegram.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/da/likvideret-paa-aave-eller-morpho-hvad-nu.mdx";
 import MorphoPreLiquidation from "~~/content/blog/da/morpho-forlikvidation.mdx";
 import MorphoHealthFactor from "~~/content/blog/da/morpho-health-factor-forklaret.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/da/morpho-likvidationsalarmer.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/da/morpho-midnight-laan-med-fast-rente.mdx";
 import AaveMarketWindDown from "~~/content/blog/da/naar-aave-afvikler-et-marked.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/da/opsaet-aave-health-factor-alarm.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-sammenligning": AaveVsMorpho,
   "aave-v4-vs-v3-forskelle": AaveV4VsV3,
   "er-defi-udlaan-sikkert": IsDefiLendingSafe,
+  "alternativer-til-defi-saver": DefiSaverAlternatives,
+  "likvidationsalarm-telegram": LiquidationAlertTelegram,
+  "morpho-likvidationsalarmer": MorphoLiquidationAlerts,
 };

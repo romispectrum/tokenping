@@ -11,17 +11,20 @@ import AaveV4VsV3 from "~~/content/blog/hu/aave-v4-vs-v3-kulonbsegek.mdx";
 import AaveVsMorpho from "~~/content/blog/hu/aave-vs-morpho-osszehasonlitas.mdx";
 import SafeAaveHealthFactor from "~~/content/blog/hu/biztonsagos-aave-health-factor.mdx";
 import IsDefiLendingSafe from "~~/content/blog/hu/biztonsagos-e-a-defi-hitelezes.mdx";
+import DefiSaverAlternatives from "~~/content/blog/hu/defi-saver-alternativak.mdx";
 import AaveMarketWindDown from "~~/content/blog/hu/egy-aave-piac-leepitese.mdx";
 import ShortFiatWithAave from "~~/content/blog/hu/fiat-shortolasa-aave-val.mdx";
 import HowMorphoLiquidationWorks from "~~/content/blog/hu/hogyan-mukodik-a-likvidalas-a-morphon.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/hu/hogyan-mukodik-a-likvidalas-az-aave-on.mdx";
 import WhoNeedsHealthFactorAlerts from "~~/content/blog/hu/kinek-kell-health-factor-riasztas.mdx";
 import CryptoBackedLoans from "~~/content/blog/hu/kriptofedezetu-hitelek.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/hu/likvidacios-riasztas-telegram.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/hu/likvidaltak-az-aave-on-vagy-morphon-mi-most.mdx";
 import WhyAaveHealthFactorDropped from "~~/content/blog/hu/miert-csokkent-az-aave-health-factor.mdx";
 import WhyAaveWithdrawOrBorrowFails from "~~/content/blog/hu/miert-nem-sikerul-a-kivetel-vagy-hitelfelvetel-aave.mdx";
 import MorphoPreLiquidation from "~~/content/blog/hu/morpho-elolikvidalas.mdx";
 import MorphoHealthFactor from "~~/content/blog/hu/morpho-health-factor-magyarazat.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/hu/morpho-likvidacios-riasztasok.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/hu/morpho-midnight-fix-kamatozasu-hitelek.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/hu/privat-aave-likvidalasi-riasztasok.mdx";
 import StablecoinDepegAave from "~~/content/blog/hu/stablecoin-depeg-az-aave-on.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-osszehasonlitas": AaveVsMorpho,
   "aave-v4-vs-v3-kulonbsegek": AaveV4VsV3,
   "biztonsagos-e-a-defi-hitelezes": IsDefiLendingSafe,
+  "defi-saver-alternativak": DefiSaverAlternatives,
+  "likvidacios-riasztas-telegram": LiquidationAlertTelegram,
+  "morpho-likvidacios-riasztasok": MorphoLiquidationAlerts,
 };

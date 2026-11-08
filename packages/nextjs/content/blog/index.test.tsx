@@ -40,8 +40,16 @@ const MORPHO_SLUGS = [
 // The comparisons, after both clusters; they count as Aave guides for the hub link.
 const COMPARISON_SLUGS = ["aave-vs-morpho", "aave-v4-vs-v3"];
 
-const GENERAL_SLUGS = ["is-defi-lending-safe"];
+const GENERAL_SLUGS = [
+  "is-defi-lending-safe",
+  "defi-saver-alternatives",
+  "liquidation-alert-telegram",
+  "morpho-liquidation-alerts",
+];
 const EXPECTED_SLUGS = [...AAVE_SLUGS, ...MORPHO_SLUGS, ...COMPARISON_SLUGS, ...GENERAL_SLUGS];
+
+// The guides that link to the Morpho hub instead of the Aave one.
+const MORPHO_HUB_SPOKES = [...MORPHO_SLUGS, "morpho-liquidation-alerts"];
 
 const CS_SLUGS = EXPECTED_SLUGS.map(slug => POST_SLUGS[slug].cs);
 
@@ -135,7 +143,7 @@ describe("getRelatedPosts", () => {
       expect(
         getRelatedPosts(slug).map(({ meta }) => meta.slug),
         slug,
-      ).toContain(MORPHO_SLUGS.includes(slug) ? MORPHO_HUB_SLUG : HUB_SLUG);
+      ).toContain(MORPHO_HUB_SPOKES.includes(slug) ? MORPHO_HUB_SLUG : HUB_SLUG);
     }
   });
 
@@ -239,7 +247,7 @@ describe("Czech posts", () => {
   it.each(CS_SLUGS)("gives %s two or three related Czech posts, the hub among them for a spoke", async slug => {
     const { RELATED_POST_COUNT, getRelatedPosts, hubSlug } = await loadBlog();
     const related = getRelatedPosts(slug, "cs").map(({ meta }) => meta.slug);
-    const hub = MORPHO_SLUGS.some(key => POST_SLUGS[key].cs === slug)
+    const hub = MORPHO_HUB_SPOKES.some(key => POST_SLUGS[key].cs === slug)
       ? POST_SLUGS["morpho-health-factor"].cs
       : hubSlug("cs");
 

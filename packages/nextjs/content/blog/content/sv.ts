@@ -6,12 +6,15 @@ import AaveLiquidationPrice from "~~/content/blog/sv/aave-likvidationspris.mdx";
 import AaveInterestRates from "~~/content/blog/sv/aave-rantor.mdx";
 import AaveV4VsV3 from "~~/content/blog/sv/aave-v4-vs-v3-skillnader.mdx";
 import AaveVsMorpho from "~~/content/blog/sv/aave-vs-morpho-jamforelse.mdx";
+import DefiSaverAlternatives from "~~/content/blog/sv/alternativ-till-defi-saver.mdx";
 import IsDefiLendingSafe from "~~/content/blog/sv/ar-defi-utlaning-saker.mdx";
 import ShortFiatWithAave from "~~/content/blog/sv/blanka-fiatvaluta-med-aave.mdx";
 import CryptoBackedLoans from "~~/content/blog/sv/lan-med-krypto-som-sakerhet.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/sv/likvidationslarm-telegram.mdx";
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/sv/likviderad-pa-aave-eller-morpho-vad-nu.mdx";
 import MorphoPreLiquidation from "~~/content/blog/sv/morpho-forlikvidation.mdx";
 import MorphoHealthFactor from "~~/content/blog/sv/morpho-health-factor-forklarad.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/sv/morpho-likvidationslarm.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/sv/morpho-midnight-lan-med-fast-ranta.mdx";
 import AaveMarketWindDown from "~~/content/blog/sv/nar-aave-avvecklar-en-marknad.mdx";
 import PrivateAaveLiquidationAlerts from "~~/content/blog/sv/privata-aave-likvidationslarm.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-jamforelse": AaveVsMorpho,
   "aave-v4-vs-v3-skillnader": AaveV4VsV3,
   "ar-defi-utlaning-saker": IsDefiLendingSafe,
+  "alternativ-till-defi-saver": DefiSaverAlternatives,
+  "likvidationslarm-telegram": LiquidationAlertTelegram,
+  "morpho-likvidationslarm": MorphoLiquidationAlerts,
 };

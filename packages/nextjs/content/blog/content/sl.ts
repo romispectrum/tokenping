@@ -6,6 +6,7 @@ import AaveInterestRates from "~~/content/blog/sl/aave-obrestne-mere.mdx";
 import AaveAlertsDoNotDisturb from "~~/content/blog/sl/aave-opozorila-v-nacinu-ne-moti.mdx";
 import AaveV4VsV3 from "~~/content/blog/sl/aave-v4-vs-v3-razlike.mdx";
 import AaveVsMorpho from "~~/content/blog/sl/aave-vs-morpho-primerjava.mdx";
+import DefiSaverAlternatives from "~~/content/blog/sl/alternative-za-defi-saver.mdx";
 import StablecoinDepegAave from "~~/content/blog/sl/depeg-stablecoina-na-aave.mdx";
 import IsDefiLendingSafe from "~~/content/blog/sl/je-defi-posojanje-varno.mdx";
 import HowAaveLiquidationWorks from "~~/content/blog/sl/kako-deluje-likvidacija-na-aave.mdx";
@@ -15,8 +16,10 @@ import WhoNeedsHealthFactorAlerts from "~~/content/blog/sl/komu-koristijo-health
 import LiquidatedOnAaveOrMorphoWhatNow from "~~/content/blog/sl/likvidiran-na-aave-ali-morpho-kaj-zdaj.mdx";
 import MorphoHealthFactor from "~~/content/blog/sl/morpho-health-factor-razlozen.mdx";
 import MorphoMidnightFixedRateLoans from "~~/content/blog/sl/morpho-midnight-posojila-s-fiksno-obrestno-mero.mdx";
+import MorphoLiquidationAlerts from "~~/content/blog/sl/morpho-opozorila-o-likvidaciji.mdx";
 import MorphoPreLiquidation from "~~/content/blog/sl/morpho-predlikvidacija.mdx";
 import AaveHealthFactorAlertSetup from "~~/content/blog/sl/nastavitev-aave-health-factor-opozorila.mdx";
+import LiquidationAlertTelegram from "~~/content/blog/sl/opozorilo-o-likvidaciji-telegram.mdx";
 import AaveLiquidationAlertTools from "~~/content/blog/sl/orodja-za-aave-opozorila-o-likvidaciji.mdx";
 import CryptoBackedLoans from "~~/content/blog/sl/posojila-s-kripto-zavarovanjem.mdx";
 import ShortFiatWithAave from "~~/content/blog/sl/short-fiat-valute-z-aave.mdx";
@@ -59,4 +62,7 @@ export const POST_CONTENT: PostContent = {
   "aave-vs-morpho-primerjava": AaveVsMorpho,
   "aave-v4-vs-v3-razlike": AaveV4VsV3,
   "je-defi-posojanje-varno": IsDefiLendingSafe,
+  "alternative-za-defi-saver": DefiSaverAlternatives,
+  "opozorilo-o-likvidaciji-telegram": LiquidationAlertTelegram,
+  "morpho-opozorila-o-likvidaciji": MorphoLiquidationAlerts,
 };
