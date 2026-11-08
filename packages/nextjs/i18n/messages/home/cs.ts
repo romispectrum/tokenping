@@ -231,9 +231,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Omezení bez příkras",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Kontroly ${csEveryMinutes(minutes)}, ne v reálném čase.`,
-    "Každá kontrola pod hranicí pošle další zprávu: bez odložení i souhrnu.",
+    `Pod hranicí dostanete zprávu každých ${repeatMinutes} minut: bez odložení i souhrnu.`,
     "Jedna hranice na trh, jen pro připojenou peněženku.",
     `Jen USDC${paymentChain ? ` na síti ${paymentChain}` : ""}: bez karty, bez vracení peněz.`,
     "E-maily zatím nemají odkaz pro odhlášení; smazání upozornění vyžaduje aktivní přístup.",

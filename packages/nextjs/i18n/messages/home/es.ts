@@ -222,9 +222,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Límites, sin rodeos",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Revisiones ${esEveryMinutes(minutes)}, no de forma continua.`,
-    "Cada revisión por debajo de tu límite envía otro mensaje: sin opción de posponer ni resumen.",
+    `Por debajo de tu límite recibes un mensaje cada ${repeatMinutes} minutos: sin opción de posponer ni resumen.`,
     "Un límite por mercado, solo para la billetera conectada.",
     `Solo USDC${paymentChain ? ` en la red ${paymentChain}` : ""}: sin tarjetas, sin reembolsos.`,
     "Los correos aún no tienen enlace para darte de baja; eliminar una alerta requiere acceso activo.",

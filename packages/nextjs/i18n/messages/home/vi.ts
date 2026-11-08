@@ -217,9 +217,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Các giới hạn, nói thẳng",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Kiểm tra ${viEveryMinutes(minutes)}, không liên tục.`,
-    "Mỗi lần kiểm tra dưới ngưỡng sẽ gửi thêm một tin nhắn: không có tạm hoãn hay bản tóm tắt.",
+    `Khi dưới ngưỡng, bạn nhận một tin nhắn mỗi ${repeatMinutes} phút: không có tạm hoãn hay bản tóm tắt.`,
     "Một ngưỡng cho mỗi thị trường, chỉ cho ví đã kết nối.",
     `Chỉ USDC${paymentChain ? ` trên mạng ${paymentChain}` : ""}: không dùng thẻ, không hoàn tiền.`,
     "Email chưa có liên kết hủy đăng ký; xóa cảnh báo cần quyền truy cập còn hiệu lực.",

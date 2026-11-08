@@ -223,9 +223,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Begrensninger, rett fram",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Sjekkes ${nbEveryMinutes(minutes)}, ikke fortløpende.`,
-    "Hver sjekk under grensen din sender en ny melding: ingen slumring eller sammendrag.",
+    `Under grensen din får du en melding hvert ${repeatMinutes}. minutt: ingen slumring eller sammendrag.`,
     "Én grense per marked, bare for den tilkoblede lommeboken.",
     `Bare USDC${paymentChain ? ` på ${paymentChain}` : ""}: ingen kort, ingen refusjon.`,
     "Ingen avmeldingslenke i e-post ennå; å slette et varsel krever aktiv tilgang.",

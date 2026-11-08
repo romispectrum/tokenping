@@ -214,9 +214,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Batasan, terus terang",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Pemeriksaan setiap ${minutes} menit, tidak terus-menerus.`,
-    "Setiap pemeriksaan di bawah batas Anda mengirim pesan lagi: tanpa tunda atau ringkasan.",
+    `Di bawah batas Anda, pesan dikirim setiap ${repeatMinutes} menit: tanpa tunda atau ringkasan.`,
     "Satu batas per pasar, hanya untuk dompet yang terhubung.",
     `Hanya USDC${paymentChain ? ` di jaringan ${paymentChain}` : ""}: tanpa kartu, tanpa pengembalian dana.`,
     "Belum ada tautan berhenti berlangganan di email; menghapus peringatan memerlukan akses aktif.",

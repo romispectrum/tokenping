@@ -245,9 +245,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Ograničenja, jasno rečena",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Provjera ${hrEveryMinutes(minutes)}, a ne neprekidno.`,
-    "Svaka provjera ispod tvoje granice šalje novu poruku: bez odgode i bez sažetaka.",
+    `Ispod tvoje granice dobivaš poruku svakih ${repeatMinutes} minuta: bez odgode i bez sažetaka.`,
     "Jedna granica po tržištu, samo za povezani novčanik.",
     `Samo USDC${paymentChain ? ` ${hrOnMarket(paymentChain, "network")}` : ""}: bez kartica, bez povrata novca.`,
     "E-poruke još nemaju poveznicu za odjavu; brisanje upozorenja traži aktivan pristup.",

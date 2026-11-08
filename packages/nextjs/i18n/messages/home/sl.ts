@@ -257,9 +257,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Omejitve, povedane naravnost",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Preverjanje ${slEveryMinutes(minutes)}, ne sproti.`,
-    "Vsako preverjanje pod tvojim pragom pošlje novo sporočilo: brez utišanja ali povzetka.",
+    `Pod tvojim pragom dobiš sporočilo vsakih ${repeatMinutes} minut: brez utišanja ali povzetka.`,
     "En prag na trg, samo za povezano denarnico.",
     `Samo USDC${paymentChain ? ` na omrežju ${paymentChain}` : ""}: brez kartic, brez vračil.`,
     "E-poštna sporočila še nimajo povezave za odjavo; brisanje opozorila zahteva aktiven dostop.",

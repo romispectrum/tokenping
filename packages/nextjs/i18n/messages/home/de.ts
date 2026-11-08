@@ -229,9 +229,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Einschränkungen, klar gesagt",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Prüfung ${deEveryMinutes(minutes)}, nicht laufend.`,
-    "Jede Prüfung unter deiner Grenze schickt eine weitere Nachricht: kein Pausieren, keine Zusammenfassung.",
+    `Unter deiner Grenze kommt alle ${repeatMinutes} Minuten eine Nachricht: kein Pausieren, keine Zusammenfassung.`,
     "Eine Grenze pro Markt, nur für die verbundene Wallet.",
     `Nur USDC${paymentChain ? ` auf ${paymentChain}` : ""}: keine Karten, keine Erstattungen.`,
     "Noch kein Abmeldelink in E-Mails; einen Alert zu löschen braucht aktiven Zugang.",

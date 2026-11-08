@@ -213,9 +213,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Mga limitasyon, sinabi nang diretso",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Tumitingin bawat ${minutes} minuto, hindi tuloy-tuloy.`,
-    "Nagpapadala ng panibagong mensahe ang bawat pagtingin na nasa ilalim ng linya mo: walang snooze o digest.",
+    `Habang nasa ilalim ng linya mo, may mensahe kada ${repeatMinutes} minuto: walang snooze o digest.`,
     "Isang linya kada market, para lang sa nakakonektang wallet.",
     `USDC${paymentChain ? ` sa ${paymentChain}` : ""} lang: walang card, walang refund.`,
     "Wala pang unsubscribe link sa mga email; kailangan ng aktibong access para mag-delete ng alerto.",

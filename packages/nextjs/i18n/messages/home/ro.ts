@@ -237,9 +237,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Limite, spuse direct",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Verificare ${roEveryMinutes(minutes)}, nu continuu.`,
-    "Fiecare verificare sub pragul tău trimite încă un mesaj: fără amânare sau rezumat.",
+    `Sub pragul tău primești un mesaj la fiecare ${repeatMinutes} minute: fără amânare sau rezumat.`,
     "Un prag pe piață, doar pentru portofelul conectat.",
     `Doar USDC${paymentChain ? ` pe ${paymentChain}` : ""}: fără carduri, fără rambursări.`,
     "Deocamdată fără link de dezabonare în e-mailuri; ștergerea unei alerte necesită acces activ.",

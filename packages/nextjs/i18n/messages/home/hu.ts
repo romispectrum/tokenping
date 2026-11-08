@@ -217,9 +217,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "A korlátok, kertelés nélkül",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Ellenőrzés ${minutes} percenként, nem folyamatosan.`,
-    "A küszöbértéked alatt minden ellenőrzés újabb üzenetet küld: nincs szundi és nincs összesítő.",
+    `A küszöbértéked alatt ${repeatMinutes} percenként kapsz üzenetet: nincs szundi és nincs összesítő.`,
     "Piaconként egy küszöbérték, csak a csatlakoztatott tárcára.",
     `Csak USDC${paymentChain ? ` ${huOnMarket(paymentChain, "network")}` : ""}: nincs kártya, nincs visszatérítés.`,
     "Az e-mailekben még nincs leiratkozási link; egy riasztás törléséhez aktív hozzáférés kell.",

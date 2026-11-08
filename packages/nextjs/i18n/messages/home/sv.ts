@@ -222,9 +222,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Begränsningar, rakt på sak",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Kontroll ${svEveryMinutes(minutes)}, inte kontinuerligt.`,
-    "Varje kontroll under din gräns skickar ett nytt meddelande: ingen snooze eller sammanfattning.",
+    `Under din gräns får du ett meddelande var ${repeatMinutes}:e minut: ingen snooze eller sammanfattning.`,
     "En gräns per marknad, bara för den anslutna plånboken.",
     `Bara USDC${paymentChain ? ` på ${paymentChain}` : ""}: inga kort, ingen återbetalning.`,
     "Ingen avregistreringslänk i e-post än; att ta bort ett larm kräver aktiv åtkomst.",

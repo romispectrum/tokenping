@@ -230,9 +230,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Os limites, sem rodeios",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Verifica ${ptEveryMinutes(minutes)}, não de forma contínua.`,
-    "Cada verificação abaixo do seu limite envia outra mensagem: sem soneca e sem resumo.",
+    `Abaixo do seu limite, você recebe uma mensagem a cada ${repeatMinutes} minutos: sem soneca e sem resumo.`,
     "Um limite por mercado, só para a carteira conectada.",
     `Só USDC${paymentChain ? ` na rede ${paymentChain}` : ""}: sem cartão e sem reembolso.`,
     "Ainda não há link de descadastro nos e-mails; excluir um alerta exige acesso ativo.",

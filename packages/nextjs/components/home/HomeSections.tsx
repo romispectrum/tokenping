@@ -30,6 +30,7 @@ import { cx } from "~~/components/ui/classNames";
 import { AAVE_MARKETS, AAVE_V3_NETWORKS, AAVE_V4_NETWORK_NAMES, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { MORPHO_CHAINS } from "~~/config/morpho";
 import {
+  ALERT_REPEAT_MINUTES,
   DEFAULT_HEALTH_FACTOR_THRESHOLD,
   HEALTH_FACTOR_THRESHOLD_MAX,
   HEALTH_FACTOR_THRESHOLD_MIN,
@@ -256,7 +257,11 @@ export const PricingSection = ({ plan, locale }: PlanProps) => {
 /** A documented limit lowers anxiety more than adjectives do. One line each. */
 export const LimitsSection = ({ locale }: LocaleProps) => {
   const t = HOME_MESSAGES[locale];
-  const limits = t.limits({ minutes: CHECK_MINUTES, paymentChain: getPaymentChainName() });
+  const limits = t.limits({
+    minutes: CHECK_MINUTES,
+    repeatMinutes: ALERT_REPEAT_MINUTES,
+    paymentChain: getPaymentChainName(),
+  });
 
   return (
     <HomeSection id="limits" title={t.limitsTitle} width="wide">

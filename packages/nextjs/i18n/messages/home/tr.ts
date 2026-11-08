@@ -211,9 +211,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Sınırlar, açıkça",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Kontrol her ${minutes} dakikada bir yapılır, kesintisiz değildir.`,
-    "Eşiğinizin altındaki her kontrol yeni bir mesaj gönderir: erteleme veya özet yok.",
+    `Eşiğinizin altındayken her ${repeatMinutes} dakikada bir mesaj gelir: erteleme veya özet yok.`,
     "Piyasa başına bir eşik, yalnızca bağlı cüzdan için.",
     `Yalnızca ${paymentChain ? `${paymentChain} ağında ` : ""}USDC: kart yok, iade yok.`,
     "E-postalarda henüz abonelikten çıkma bağlantısı yok; bir uyarıyı silmek etkin erişim gerektirir.",

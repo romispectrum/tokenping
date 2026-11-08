@@ -634,7 +634,7 @@ describe("copy rules", () => {
     // One line each; coverage moved to its own section.
     expect(limits).toEqual([
       "Checks every 5 minutes, not in real time.",
-      "Every check below your line sends another message: no snooze or digest.",
+      "Below your line, a message every 15 minutes: no snooze or digest.",
       "One line per market, for the connected wallet only.",
       "USDC on Arbitrum One only: no cards, no refunds.",
       "No unsubscribe link in emails yet; deleting an alert needs active access.",

@@ -222,9 +222,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Begrænsninger, sagt ligeud",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Tjek ${daEveryMinutes(minutes)}, ikke løbende.`,
-    "Hvert tjek under din grænse sender en ny besked: ingen snooze eller opsummering.",
+    `Under din grænse får du en besked hvert ${repeatMinutes}. minut: ingen snooze eller opsummering.`,
     "Én grænse pr. marked, kun for den forbundne wallet.",
     `Kun USDC${paymentChain ? ` på ${paymentChain}` : ""}: ingen kort, ingen refusion.`,
     "Intet afmeldingslink i e-mails endnu; det kræver aktiv adgang at slette en alarm.",

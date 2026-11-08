@@ -224,9 +224,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Beperkingen, eerlijk gezegd",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Controle ${nlEveryMinutes(minutes)}, niet doorlopend.`,
-    "Elke controle onder je grens stuurt opnieuw een bericht: geen sluimerfunctie of samenvatting.",
+    `Onder je grens krijg je elke ${repeatMinutes} minuten een bericht: geen sluimerfunctie of samenvatting.`,
     "Eén grens per markt, alleen voor de gekoppelde wallet.",
     `Alleen USDC${paymentChain ? ` op ${paymentChain}` : ""}: geen kaarten, geen terugbetalingen.`,
     "Nog geen afmeldlink in e-mails; een alert verwijderen vraagt actieve toegang.",

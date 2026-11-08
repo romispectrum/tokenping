@@ -230,9 +230,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Les limites, sans détour",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Vérification ${frEveryMinutes(minutes)}, pas en continu.`,
-    "Chaque vérification sous votre seuil envoie un nouveau message : pas de mise en pause ni de récapitulatif.",
+    `Sous votre seuil, un message toutes les ${repeatMinutes} minutes : pas de mise en pause ni de récapitulatif.`,
     "Un seuil par marché, uniquement pour le wallet connecté.",
     `USDC${paymentChain ? ` sur ${paymentChain}` : ""} uniquement : pas de carte, pas de remboursement.`,
     "Pas encore de lien de désabonnement dans les e-mails ; supprimer une alerte nécessite un accès actif.",

@@ -202,9 +202,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Limits, stated plainly",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Checks every ${minutes} minutes, not in real time.`,
-    "Every check below your line sends another message: no snooze or digest.",
+    `Below your line, a message every ${repeatMinutes} minutes: no snooze or digest.`,
     "One line per market, for the connected wallet only.",
     `USDC${paymentChain ? ` on ${paymentChain}` : ""} only: no cards, no refunds.`,
     "No unsubscribe link in emails yet; deleting an alert needs active access.",

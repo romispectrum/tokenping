@@ -5,6 +5,7 @@ import { getHomeDescription } from "~~/components/home/homeContent";
 import { AAVE_MARKETS, AAVE_NETWORK_NAMES, AAVE_V3_NETWORKS, AAVE_V4_SPOKES } from "~~/config/aaveConfig";
 import { MORPHO_CHAINS } from "~~/config/morpho";
 import {
+  ALERT_REPEAT_MINUTES,
   HEALTH_FACTOR_THRESHOLD_MAX,
   HEALTH_FACTOR_THRESHOLD_MIN,
   MORPHO_HEALTH_FACTOR_THRESHOLD_MIN,
@@ -71,7 +72,7 @@ export const buildLlmsTxt = () => {
   const channels = formatAlertChannelsIn("en", "disjunction");
   const paymentChain = getPaymentChainName();
   const facts = [
-    `- Checks: every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes for the connected wallet's positions. While a health factor is below the threshold its owner chose (${HEALTH_FACTOR_THRESHOLD_MIN} to ${HEALTH_FACTOR_THRESHOLD_MAX} on Aave, ${MORPHO_HEALTH_FACTOR_THRESHOLD_MIN} to ${HEALTH_FACTOR_THRESHOLD_MAX} on Morpho), every check sends an alert by ${channels}.`,
+    `- Checks: every ${NOTIFICATION_CHECK_INTERVAL_MINUTES} minutes for the connected wallet's positions. While a health factor is below the threshold its owner chose (${HEALTH_FACTOR_THRESHOLD_MIN} to ${HEALTH_FACTOR_THRESHOLD_MAX} on Aave, ${MORPHO_HEALTH_FACTOR_THRESHOLD_MIN} to ${HEALTH_FACTOR_THRESHOLD_MAX} on Morpho), an alert goes out by ${channels} at once, then every ${ALERT_REPEAT_MINUTES} minutes until it recovers.`,
     `- Aave coverage: every Aave V3 market (${AAVE_MARKETS.length} markets on ${AAVE_V3_NETWORKS.length} networks) and every Aave V4 Spoke (${AAVE_V4_SPOKES.length}), with one alert per market or Spoke.`,
     `- Morpho coverage: every Morpho Blue (variable-rate) and Morpho Midnight (fixed-rate) market the Morpho app lists, on ${MORPHO_CHAINS.length} networks, with one alert per market. A Midnight loan also gets reminders 7 days and 1 day before it matures. One plan covers Aave and Morpho alerts.`,
     `- Access: looking at positions on the dashboard needs no payment. Alerts need paid access, paid in ${PAYMENT_TOKEN_SYMBOL}${paymentChain ? ` on ${paymentChain}` : ""} from the wallet. Nothing renews automatically; each payment adds one plan period after the current end date.`,

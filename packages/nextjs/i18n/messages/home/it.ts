@@ -231,9 +231,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "I limiti, detti chiaramente",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Controllo ${itEveryMinutes(minutes)}, non continuo.`,
-    "Ogni controllo sotto la tua soglia invia un nuovo messaggio: niente pausa né riepilogo.",
+    `Sotto la tua soglia ricevi un messaggio ogni ${repeatMinutes} minuti: niente pausa né riepilogo.`,
     "Una soglia per mercato, solo per il wallet collegato.",
     `Solo USDC${paymentChain ? ` su ${paymentChain}` : ""}: niente carte, niente rimborsi.`,
     "Le email non hanno ancora un link di disiscrizione; eliminare un avviso richiede l'accesso attivo.",

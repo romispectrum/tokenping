@@ -249,9 +249,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "Ograniczenia, powiedziane wprost",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `Sprawdzanie ${plEveryMinutes(minutes)}, a nie na bieżąco.`,
-    "Każde sprawdzenie poniżej twojej granicy wysyła kolejną wiadomość: bez wstrzymywania i bez podsumowań.",
+    `Poniżej twojej granicy dostajesz wiadomość co ${repeatMinutes} minut: bez wstrzymywania i bez podsumowań.`,
     "Jedna granica na rynek, tylko dla połączonego portfela.",
     `Tylko USDC${paymentChain ? ` w sieci ${paymentChain}` : ""}: bez kart, bez zwrotów.`,
     "E-maile nie mają jeszcze linku do wypisania się; usunięcie alertu wymaga aktywnego dostępu.",

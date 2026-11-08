@@ -109,7 +109,7 @@ export type HomeMessages = {
 
   // Limits
   limitsTitle: string;
-  limits: (input: { minutes: number; paymentChain: string | undefined }) => string[];
+  limits: (input: { minutes: number; repeatMinutes: number; paymentChain: string | undefined }) => string[];
 
   // From the blog
   blogTitle: string;

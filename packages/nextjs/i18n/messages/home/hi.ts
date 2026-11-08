@@ -214,9 +214,9 @@ export const MESSAGES: HomeMessages = {
   },
 
   limitsTitle: "हदें, साफ़ शब्दों में",
-  limits: ({ minutes, paymentChain }) => [
+  limits: ({ minutes, paymentChain, repeatMinutes }) => [
     `जाँच ${hiEveryMinutes(minutes)}, लगातार नहीं।`,
-    "आपकी सीमा से नीचे की हर जाँच एक और संदेश भेजती है: न स्नूज़, न डाइजेस्ट।",
+    `आपकी सीमा से नीचे रहने पर हर ${repeatMinutes} मिनट में एक संदेश: न स्नूज़, न डाइजेस्ट।`,
     "हर मार्केट के लिए एक सीमा, सिर्फ़ कनेक्ट किए गए वॉलेट के लिए।",
     `${paymentChain ? `${paymentChain} नेटवर्क पर ` : ""}सिर्फ़ USDC: न कार्ड, न रिफ़ंड।`,
     "ईमेल में अभी अनसब्सक्राइब लिंक नहीं है; अलर्ट हटाने के लिए सक्रिय एक्सेस चाहिए।",
